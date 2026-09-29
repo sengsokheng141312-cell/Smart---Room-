@@ -1,0 +1,2269 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>IOT គ្រប់គ្រងបន្ទប់ – AC + Lights</title>
+    <link href="https://fonts.googleapis.com/css2?family=Battambang:wght@100;300;400;700;900&family=Kantumruy+Pro:wght@300;400;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        :root {
+            --bg-body: #0b1a2e;
+            --bg-dashboard: rgba(255, 255, 255, 0.05);
+            --bg-sidebar: rgba(10, 25, 40, 0.85);
+            --accent-color: #6bc7ff;
+            --text-primary: #f0f6ff;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --text-muted: rgba(255, 255, 255, 0.3);
+            --card-bg: rgba(255, 255, 255, 0.04);
+            --border-color: rgba(255, 255, 255, 0.06);
+            --font-size-base: 16px;
+            --font-family-base: 'Kantumruy Pro', 'Segoe UI', 'Khmer OS', system-ui, sans-serif;
+            --sidebar-font-family: 'Kantumruy Pro', 'Segoe UI', 'Khmer OS', system-ui, sans-serif;
+            --shadow-color: rgba(0, 0, 0, 0.5);
+            --accent-glow: rgba(107, 199, 255, 0.35);
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f39c12;
+            --nav-dark: #0f172a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        html { -webkit-text-size-adjust: 100%; }
+        body {
+            font-family: var(--font-family-base);
+            background-color: var(--bg-body);
+            background-size: cover; background-position: center; background-attachment: fixed; background-repeat: no-repeat;
+            min-height: 100vh; display: flex; color: var(--text-primary);
+            font-size: var(--font-size-base);
+            transition: background-color 0.5s ease, background-image 0.5s ease, color 0.3s, font-size 0.3s;
+            overflow-x: hidden;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle at 20% 30%, var(--accent-glow) 0%, transparent 45%),
+                        radial-gradient(circle at 80% 70%, rgba(107, 199, 255, 0.08) 0%, transparent 45%);
+            pointer-events: none; z-index: 0;
+            animation: ambientFloat 15s ease-in-out infinite;
+        }
+        @keyframes ambientFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.6; }
+            50% { transform: translate(20px, -20px) scale(1.1); opacity: 1; }
+        }
+        
+        .ripple-container { position: relative; overflow: hidden; }
+        .ripple {
+            position: absolute; border-radius: 50%;
+            background: rgba(255, 255, 255, 0.6);
+            transform: scale(0);
+            animation: rippleAnim 0.7s ease-out;
+            pointer-events: none;
+        }
+        @keyframes rippleAnim { to { transform: scale(4); opacity: 0; } }
+        
+        /* LOGIN */
+        .login-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0b1a2e 0%, #1a2f44 100%);
+            z-index: 99999;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px; animation: fadeUp 0.5s ease;
+        }
+        .login-overlay.hidden { display: none !important; }
+        .login-box {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 28px; padding: 44px 36px 36px;
+            max-width: 420px; width: 100%;
+            box-shadow: 0 40px 80px rgba(0, 0, 0, 0.6), 0 0 60px var(--accent-glow);
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .login-box::before {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: conic-gradient(from 0deg, transparent 0deg, var(--accent-glow) 90deg, transparent 180deg);
+            animation: rotateGlow 8s linear infinite;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        @keyframes rotateGlow { to { transform: rotate(360deg); } }
+        .login-box .login-logo { font-size: 60px; color: var(--accent-color); margin-bottom: 16px; display: block; position: relative; z-index: 1; filter: drop-shadow(0 0 20px var(--accent-glow)); animation: floatIcon 3s ease-in-out infinite; }
+        @keyframes floatIcon {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .login-box h2 { font-size: 24px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; position: relative; z-index: 1; }
+        .login-box .login-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.6; position: relative; z-index: 1; }
+        
+        .login-lang-row {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 18px; padding: 10px 14px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1.5px solid var(--border-color);
+            border-radius: 14px;
+            transition: all 0.3s ease;
+            position: relative; z-index: 1;
+        }
+        .login-lang-row:hover { border-color: var(--accent-color); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .login-lang-row i { color: var(--accent-color); font-size: 16px; }
+        .login-lang-row select { flex: 1; background: transparent; color: var(--text-primary); border: none; font-size: 14px; font-weight: 500; cursor: pointer; outline: none; font-family: inherit; }
+        .login-lang-row select option { background: #1a2f44; color: #fff; }
+        
+        .login-box .login-field { text-align: left; margin-bottom: 16px; position: relative; z-index: 1; }
+        .login-box .login-field label { display: block; font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 6px; }
+        .login-box .login-field input { width: 100%; background: rgba(0, 0, 0, 0.3); border: 1.5px solid var(--border-color); border-radius: 12px; padding: 13px 16px; font-size: 15px; color: var(--text-primary); outline: none; font-family: inherit; transition: all 0.3s ease; }
+        .login-box .login-field input:focus { border-color: var(--accent-color); box-shadow: 0 0 0 4px var(--accent-glow); transform: translateY(-1px); }
+        .password-wrapper { position: relative; display: flex; align-items: center; }
+        .password-wrapper input { padding-right: 46px !important; }
+        .toggle-password { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: transparent; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; padding: 8px 10px; border-radius: 8px; display: flex; align-items: center; justify-content: center; transition: all 0.3s; }
+        .toggle-password:hover { color: var(--accent-color); background: var(--accent-glow); }
+        .login-box .login-btn { width: 100%; background: linear-gradient(135deg, #1a7a3e, #2ecc71); color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 15px; font-weight: 700; cursor: pointer; margin-top: 8px; font-family: inherit; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 1; overflow: hidden; box-shadow: 0 8px 20px rgba(46, 204, 113, 0.25); }
+        .login-box .login-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(46, 204, 113, 0.45); }
+        .login-box .login-btn:active:not(:disabled) { transform: scale(0.97); }
+        .login-box .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .login-box .login-status { margin-top: 14px; font-size: 13px; min-height: 20px; position: relative; z-index: 1; font-weight: 500; }
+        .login-box .login-status.error { color: var(--danger-color); }
+        .login-box .login-status.success { color: var(--success-color); }
+        .login-box .login-status.loading { color: var(--warning-color); }
+        
+        /* SIDEBAR */
+        .sidebar { 
+            position: fixed; top: 0; left: 0; width: 230px; height: 100vh; 
+            background: var(--bg-sidebar); backdrop-filter: blur(16px); 
+            border-right: 1px solid var(--border-color); padding: 28px 18px 20px; 
+            display: flex; flex-direction: column; z-index: 100; 
+            box-shadow: 4px 0 30px var(--shadow-color); font-family: var(--sidebar-font-family); 
+            transition: transform 0.35s ease, background 0.3s; 
+        }
+        .sidebar-brand { text-align: center; padding-bottom: 24px; border-bottom: 1px solid var(--border-color); margin-bottom: 28px; }
+        .sidebar-brand .brand-icon { font-size: 34px; color: var(--accent-color); display: block; margin-bottom: 6px; filter: drop-shadow(0 0 12px var(--accent-glow)); }
+        .sidebar-brand .brand-icon img { width: 64px; height: 64px; object-fit: contain; border-radius: 12px; }
+        .sidebar-brand h2 { font-size: 16px; font-weight: 600; line-height: 1.5; color: var(--text-primary); }
+        .sidebar-brand h2 .iot-tag { color: var(--accent-color); }
+        .sidebar-nav { display: none !important; }
+        .sidebar-footer { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted); text-align: center; }
+        .sidebar-footer i { color: var(--accent-color); }
+        .logout-btn { background: rgba(231, 76, 60, 0.1); border: 1px solid rgba(231, 76, 60, 0.2); color: var(--danger-color); padding: 10px 16px; border-radius: 12px; font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; width: 100%; justify-content: center; margin-top: 8px; font-family: inherit; transition: all 0.3s ease; }
+        .logout-btn:hover { background: rgba(231, 76, 60, 0.2); transform: translateY(-2px); }
+        
+        /* MAIN */
+        .main-content { 
+            margin-left: 230px;
+            flex: 1; min-height: 100vh; padding: 24px 28px 140px; 
+            display: flex; justify-content: center; align-items: flex-start; 
+            position: relative; z-index: 1; 
+        }
+        .dashboard { max-width: 860px; width: 100%; background: var(--bg-dashboard); backdrop-filter: blur(12px); border-radius: 40px; padding: 24px 24px 28px; box-shadow: 0 30px 60px var(--shadow-color), 0 0 40px rgba(107, 199, 255, 0.05); border: 1px solid var(--border-color); transition: background 0.3s, border 0.3s, box-shadow 0.3s; }
+        .view { display: none; }
+        .view.active { display: block; animation: fadeUp 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        @keyframes fadeUp { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+        .header { text-align: center; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+        .header .icon-head { font-size: 24px; color: var(--accent-color); display: block; margin-bottom: 4px; filter: drop-shadow(0 0 12px var(--accent-glow)); }
+        .header h1 { font-size: 18px; font-weight: 700; color: var(--text-primary); line-height: 1.3; }
+        .header h1 span { color: var(--accent-color); }
+        
+        /* LIGHT CARDS */
+        .light-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 22px; }
+        .light-card { 
+            background: linear-gradient(180deg, #22344d 0%, #16273b 100%);
+            border-radius: 16px; padding: 14px 6px 16px; text-align: center; border: none; 
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            cursor: pointer; position: relative; user-select: none;
+            box-shadow: 0 4px 0 #0a1524, 0 6px 15px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transform: translateY(0);
+        }
+        .light-card:hover { 
+            transform: translateY(-4px); 
+            background: linear-gradient(180deg, #2a4059 0%, #1a2f47 100%);
+            box-shadow: 0 8px 0 #0a1524, 0 12px 25px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        }
+        .light-card:active { 
+            transform: translateY(-1px); 
+            box-shadow: 0 2px 0 #0a1524, 0 3px 8px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        .light-card.on { 
+            background: linear-gradient(180deg, #0d5a8f 0%, #0a4370 100%);
+            box-shadow: 0 4px 0 #052947, 0 8px 25px rgba(107, 199, 255, 0.6), 0 0 35px rgba(107, 199, 255, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3), inset 0 -3px 15px rgba(107, 199, 255, 0.2);
+        }
+        .light-card.on:hover {
+            transform: translateY(-4px); 
+            background: linear-gradient(180deg, #1070a8 0%, #0c5588 100%);
+            box-shadow: 0 8px 0 #052947, 0 14px 40px rgba(107, 199, 255, 0.7), 0 0 50px rgba(107, 199, 255, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -3px 20px rgba(107, 199, 255, 0.3);
+        }
+        .light-card.on .light-icon { color: #ffffff; text-shadow: 0 0 20px #ffffff, 0 0 30px var(--accent-color); animation: lightBounce 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55); }
+        @keyframes lightBounce { 0% { transform: scale(1) rotate(0); } 30% { transform: scale(1.4) rotate(-10deg); } 60% { transform: scale(1.2) rotate(5deg); } 100% { transform: scale(1) rotate(0); } }
+        .light-card.on .status-badge { background: rgba(255, 255, 255, 0.25); color: #ffffff; border-color: rgba(255, 255, 255, 0.5); box-shadow: 0 0 15px rgba(255, 255, 255, 0.4); }
+        .light-card.off .light-icon { color: var(--text-muted); }
+        .light-icon { font-size: 26px; display: block; margin-bottom: 6px; transition: all 0.4s ease; }
+        .light-name { font-size: 12px; font-weight: 600; color: var(--text-secondary); white-space: nowrap; }
+        .light-card.on .light-name { color: #ffffff; }
+        .status-badge { display: inline-block; margin-top: 6px; padding: 3px 12px; border-radius: 40px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; border: 1px solid rgba(255, 255, 255, 0.1); min-width: 40px; transition: all 0.3s ease; background: rgba(0, 0, 0, 0.3); color: var(--text-muted); }
+        
+        /* ALL ON / ALL OFF */
+        .action-row { display: flex; gap: 10px; justify-content: center; margin-bottom: 18px; flex-wrap: wrap; }
+        .action-btn { flex: 0 1 auto; padding: 10px 24px; border: none; border-radius: 60px; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; color: #fff; letter-spacing: 0.5px; }
+        .action-btn:hover { transform: translateY(-3px); }
+        .action-btn:active { transform: scale(0.95); }
+        .action-btn.all-on { background: linear-gradient(135deg, rgba(46, 204, 113, 0.75), rgba(88, 214, 141, 0.75)); border: 1.5px solid rgba(46, 204, 113, 0.6); box-shadow: 0 5px 0 rgba(26, 122, 62, 0.35), 0 8px 20px rgba(46, 204, 113, 0.25); }
+        .action-btn.all-on:hover { background: linear-gradient(135deg, rgba(46, 204, 113, 0.9), rgba(88, 214, 141, 0.9)); box-shadow: 0 8px 0 rgba(26, 122, 62, 0.4), 0 12px 30px rgba(46, 204, 113, 0.4); }
+        .action-btn.all-off { background: linear-gradient(135deg, rgba(231, 76, 60, 0.75), rgba(236, 112, 99, 0.75)); border: 1.5px solid rgba(231, 76, 60, 0.6); box-shadow: 0 5px 0 rgba(122, 26, 40, 0.35), 0 8px 20px rgba(231, 76, 60, 0.25); }
+        .action-btn.all-off:hover { background: linear-gradient(135deg, rgba(231, 76, 60, 0.9), rgba(236, 112, 99, 0.9)); box-shadow: 0 8px 0 rgba(122, 26, 40, 0.4), 0 12px 30px rgba(231, 76, 60, 0.4); }
+        
+        .fb-status { text-align: center; font-size: 11px; color: var(--text-muted); margin-top: 4px; margin-bottom: 12px; }
+        .fb-status i { color: var(--accent-color); animation: statusPulse 2s ease-in-out infinite; }
+        @keyframes statusPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        
+        /* AC */
+        .ac-remote { 
+            background: linear-gradient(160deg, rgba(34, 52, 77, 0.6) 0%, rgba(16, 30, 48, 0.9) 100%);
+            border-radius: 32px; 
+            padding: 20px 22px 22px; 
+            border: 1.5px solid rgba(107, 199, 255, 0.15); 
+            margin-top: 6px; 
+            transition: all 0.4s ease; 
+            position: relative; 
+            overflow: hidden;
+            box-shadow: 
+                0 10px 30px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.08),
+                0 0 40px rgba(107, 199, 255, 0.05);
+        }
+        .ac-remote::before {
+            content: '';
+            position: absolute;
+            top: -50%; right: -50%;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle, rgba(107, 199, 255, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .ac-remote:hover { 
+            border-color: rgba(107, 199, 255, 0.35); 
+            box-shadow: 
+                0 15px 40px rgba(0, 0, 0, 0.5),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1),
+                0 0 60px rgba(107, 199, 255, 0.15);
+        }
+        .ac-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; position: relative; z-index: 1; }
+        .ac-brand .logo { font-weight: 700; font-size: 20px; color: #ffffff; display: flex; align-items: center; gap: 10px; text-shadow: 0 0 15px rgba(107, 199, 255, 0.3); }
+        .ac-brand .logo i { 
+            color: var(--accent-color); 
+            animation: spinSnow 8s linear infinite;
+            font-size: 22px;
+            filter: drop-shadow(0 0 12px var(--accent-color));
+        }
+        @keyframes spinSnow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
+        .ac-power-btn { 
+            background: rgba(0, 0, 0, 0.4); 
+            border: 2px solid rgba(107, 199, 255, 0.3); 
+            color: var(--text-muted); 
+            width: 52px; height: 52px; border-radius: 50%; font-size: 22px; 
+            cursor: pointer; display: flex; align-items: center; justify-content: center; 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative; overflow: hidden; 
+        }
+        .ac-power-btn:hover { transform: scale(1.12); border-color: var(--accent-color); color: var(--accent-color); }
+        .ac-power-btn:active { transform: scale(0.92); }
+        .ac-power-btn.on { 
+            background: linear-gradient(135deg, #1a9e54 0%, #0e7a3d 100%);
+            border-color: #2ecc71; 
+            color: #ffffff; 
+            box-shadow: 
+                0 0 40px rgba(46, 204, 113, 0.8), 
+                0 0 20px rgba(46, 204, 113, 0.6),
+                inset 0 0 20px rgba(255, 255, 255, 0.3);
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.9);
+            animation: acPowerPulse 2s ease-in-out infinite;
+        }
+        @keyframes acPowerPulse {
+            0%, 100% { box-shadow: 0 0 40px rgba(46, 204, 113, 0.8), 0 0 20px rgba(46, 204, 113, 0.6), inset 0 0 20px rgba(255, 255, 255, 0.3); }
+            50% { box-shadow: 0 0 55px rgba(46, 204, 113, 1), 0 0 30px rgba(46, 204, 113, 0.8), inset 0 0 30px rgba(255, 255, 255, 0.4); }
+        }
+        
+        .ac-display { 
+            background: linear-gradient(135deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.3) 100%);
+            border-radius: 22px; 
+            padding: 16px 20px; 
+            margin-bottom: 18px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border: 1.5px solid rgba(107, 199, 255, 0.15); 
+            transition: all 0.3s ease; 
+            position: relative; 
+            overflow: hidden;
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            z-index: 1;
+        }
+        .ac-display::before { 
+            content: ''; 
+            position: absolute; 
+            top: 0; left: -100%; 
+            width: 100%; height: 100%; 
+            background: linear-gradient(90deg, transparent, rgba(107, 199, 255, 0.15), transparent); 
+            transition: left 1s; 
+        }
+        .ac-display:hover::before { left: 100%; }
+        .ac-temp-display { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+        .ac-temp-display .temp-set { 
+            font-size: 42px; 
+            font-weight: 300; 
+            color: #ffffff; 
+            line-height: 1; 
+            transition: all 0.3s ease;
+            text-shadow: 0 0 20px rgba(107, 199, 255, 0.4);
+        }
+        .ac-temp-display .temp-unit { font-size: 18px; color: var(--accent-color); font-weight: 400; }
+        .ac-temp-display .temp-mode-label { 
+            font-size: 13px; 
+            color: var(--accent-color); 
+            font-weight: 700; 
+            margin-left: 10px; 
+            background: linear-gradient(135deg, rgba(107, 199, 255, 0.2), rgba(107, 199, 255, 0.1));
+            padding: 4px 16px; 
+            border-radius: 40px; 
+            transition: all 0.3s ease;
+            border: 1px solid rgba(107, 199, 255, 0.3);
+            box-shadow: 0 0 15px rgba(107, 199, 255, 0.2);
+        }
+        .ac-room-temp { text-align: right; }
+        .ac-room-temp .label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 2px; }
+        .ac-room-temp .value { font-size: 30px; font-weight: 300; color: var(--accent-color); text-shadow: 0 0 15px rgba(107, 199, 255, 0.4); }
+        .ac-room-temp .unit { font-size: 14px; color: var(--text-muted); }
+        
+        .ac-modes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 16px; position: relative; z-index: 1; }
+        .ac-mode-btn { 
+            background: linear-gradient(180deg, rgba(34, 52, 77, 0.7) 0%, rgba(16, 30, 48, 0.9) 100%);
+            border: 1.5px solid rgba(107, 199, 255, 0.12); 
+            border-radius: 16px; 
+            padding: 12px 0; 
+            color: var(--text-muted); 
+            font-size: 11px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            text-align: center; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 5px; 
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative; 
+            overflow: hidden;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.4), 0 6px 12px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+            transform: translateY(-1px);
+        }
+        .ac-mode-btn i { font-size: 22px; margin-bottom: 2px; transition: transform 0.35s; }
+        .ac-mode-btn:hover { 
+            transform: translateY(-4px); 
+            color: var(--text-primary); 
+            border-color: rgba(107, 199, 255, 0.5); 
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.4), 0 10px 22px rgba(0, 0, 0, 0.35), 0 0 20px rgba(107, 199, 255, 0.2);
+        }
+        .ac-mode-btn:hover i { transform: scale(1.2); }
+        .ac-mode-btn:active { 
+            transform: translateY(-1px) scale(0.95); 
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4), 0 3px 6px rgba(0, 0, 0, 0.25);
+        }
+        .ac-mode-btn.active { 
+            background: linear-gradient(180deg, #0d5a8f 0%, #0a4370 100%);
+            border-color: #6bc7ff; 
+            color: #ffffff; 
+            box-shadow: 
+                0 4px 0 #052947,
+                0 8px 25px rgba(107, 199, 255, 0.7), 
+                0 0 35px rgba(107, 199, 255, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.3);
+            text-shadow: 0 0 12px rgba(255, 255, 255, 0.7);
+        }
+        
+        .ac-controls-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 6px; position: relative; z-index: 1; }
+        .ac-fan-group { display: flex; gap: 5px; flex: 1; min-width: 140px; }
+        .ac-fan-btn { 
+            background: linear-gradient(180deg, rgba(34, 52, 77, 0.6) 0%, rgba(16, 30, 48, 0.8) 100%);
+            border: 1.5px solid rgba(107, 199, 255, 0.12); 
+            border-radius: 30px; 
+            padding: 8px 12px; 
+            color: var(--text-muted); 
+            font-size: 10px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            flex: 1; 
+            text-align: center; 
+            white-space: nowrap; 
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        .ac-fan-btn:hover { color: var(--text-primary); transform: translateY(-2px); border-color: rgba(107, 199, 255, 0.4); }
+        .ac-fan-btn:active { transform: scale(0.93); }
+        .ac-fan-btn.active { 
+            background: linear-gradient(180deg, #0e7a3d 0%, #0a5c2e 100%);
+            border-color: #2ecc71; 
+            color: #ffffff; 
+            box-shadow: 0 4px 18px rgba(46, 204, 113, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        }
+        
+        .ac-swing-btn { 
+            background: linear-gradient(180deg, rgba(34, 52, 77, 0.6) 0%, rgba(16, 30, 48, 0.8) 100%);
+            border: 1.5px solid rgba(107, 199, 255, 0.12); 
+            border-radius: 30px; 
+            padding: 8px 18px; 
+            color: var(--text-muted); 
+            font-size: 10px; 
+            font-weight: 600; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 6px; 
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+        .ac-swing-btn:hover { color: var(--text-primary); transform: translateY(-2px); border-color: rgba(107, 199, 255, 0.4); }
+        .ac-swing-btn:active { transform: scale(0.93); }
+        .ac-swing-btn.active { 
+            background: linear-gradient(180deg, #0d5a8f 0%, #0a4370 100%);
+            border-color: #6bc7ff; 
+            color: #ffffff; 
+            box-shadow: 0 4px 18px rgba(107, 199, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.7);
+        }
+        .ac-swing-btn.active i { animation: swingAnim 1.5s ease-in-out infinite; }
+        @keyframes swingAnim { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(4px); } }
+        
+        .ac-temp-adj { display: flex; gap: 8px; margin-left: auto; }
+        .ac-temp-adj button { 
+            background: linear-gradient(180deg, rgba(34, 52, 77, 0.6) 0%, rgba(16, 30, 48, 0.8) 100%);
+            border: 1.5px solid rgba(107, 199, 255, 0.2); 
+            border-radius: 50%; 
+            width: 40px; height: 40px; 
+            color: var(--accent-color); 
+            font-size: 18px; 
+            cursor: pointer; 
+            display: flex; align-items: center; justify-content: center; 
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative; 
+            overflow: hidden;
+            box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+        .ac-temp-adj button:hover { 
+            background: linear-gradient(180deg, rgba(107, 199, 255, 0.3) 0%, rgba(107, 199, 255, 0.15) 100%);
+            border-color: var(--accent-color); 
+            color: #ffffff; 
+            transform: translateY(-3px) scale(1.08); 
+            box-shadow: 0 5px 0 rgba(0, 0, 0, 0.3), 0 0 20px var(--accent-glow);
+        }
+        .ac-temp-adj button:active { transform: translateY(-1px) scale(0.95); }
+        
+        /* RF CARDS */
+        .rf-devices-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 12px; width: 100%; }
+        .rf-card { 
+            background: linear-gradient(180deg, #22344d 0%, #16273b 100%);
+            border-radius: 20px; 
+            padding: 16px 16px 18px; 
+            border: none; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            flex: 1 1 calc(50% - 6px); 
+            min-width: 180px; 
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative; 
+            overflow: hidden;
+            box-shadow: 0 6px 0 #0a1524, 0 8px 20px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+        }
+        .rf-card::after { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, rgba(107, 199, 255, 0.15), transparent); transition: left 0.8s; pointer-events: none; }
+        .rf-card:hover { 
+            transform: translateY(-6px); 
+            box-shadow: 0 12px 0 #0a1524, 0 18px 35px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+        }
+        .rf-card:hover::after { left: 100%; }
+        
+        .rf-header { display: flex; justify-content: space-between; align-items: center; }
+        .rf-name { font-weight: 700; color: var(--text-primary); font-size: 15px; }
+        .rf-badge { font-size: 10px; padding: 3px 12px; border-radius: 20px; font-weight: 700; transition: all 0.3s ease; }
+        .rf-badge.on { background: rgba(46, 204, 113, 0.3); color: #ffffff; border: 1px solid rgba(46, 204, 113, 0.6); box-shadow: 0 0 10px rgba(46, 204, 113, 0.4); }
+        .rf-badge.off { background: rgba(231, 76, 60, 0.25); color: #ffffff; border: 1px solid rgba(231, 76, 60, 0.5); box-shadow: 0 0 10px rgba(231, 76, 60, 0.3); }
+        .rf-header-actions { display: flex; align-items: center; gap: 8px; }
+        .btn-delete { background: transparent; border: none; color: var(--text-muted); cursor: pointer; font-size: 14px; padding: 6px 10px; border-radius: 8px; transition: all 0.3s ease; }
+        .btn-delete:hover { color: var(--danger-color); background: rgba(231, 76, 60, 0.15); transform: scale(1.15) rotate(8deg); }
+        
+        .rf-actions { display: flex; gap: 10px; width: 100%; }
+        .rf-actions button { 
+            flex: 1; 
+            padding: 13px 0; 
+            border-radius: 14px; 
+            border: 1.5px solid var(--border-color); 
+            background: var(--card-bg); 
+            color: var(--text-secondary); 
+            font-size: 14px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); 
+            position: relative; 
+            overflow: hidden;
+            letter-spacing: 1px;
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3), 0 5px 12px rgba(0, 0, 0, 0.2);
+            transform: translateY(-1px);
+        }
+        .rf-actions button:hover { transform: translateY(-4px); box-shadow: 0 7px 0 rgba(0, 0, 0, 0.3), 0 10px 20px rgba(0, 0, 0, 0.3); }
+        .rf-actions button:active { transform: translateY(-1px) scale(0.97); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3), 0 3px 6px rgba(0, 0, 0, 0.2); }
+        .rf-actions .btn-on { color: var(--success-color); border-color: rgba(46, 204, 113, 0.45); background: rgba(46, 204, 113, 0.08); }
+        .rf-actions .btn-on:hover { background: rgba(46, 204, 113, 0.2); box-shadow: 0 7px 0 rgba(26, 122, 62, 0.4), 0 10px 25px rgba(46, 204, 113, 0.35); border-color: var(--success-color); }
+        .rf-actions .btn-off { color: var(--danger-color); border-color: rgba(231, 76, 60, 0.45); background: rgba(231, 76, 60, 0.08); }
+        .rf-actions .btn-off:hover { background: rgba(231, 76, 60, 0.2); box-shadow: 0 7px 0 rgba(122, 26, 40, 0.4), 0 10px 25px rgba(231, 76, 60, 0.35); border-color: var(--danger-color); }
+        
+        .rf-actions .btn-on.active { 
+            background: linear-gradient(180deg, #0e7a3d 0%, #0a5c2e 100%) !important; 
+            color: #ffffff !important; 
+            border-color: #2ecc71 !important; 
+            box-shadow: 0 4px 0 #054022, 0 6px 22px rgba(46, 204, 113, 0.7), 0 0 30px rgba(46, 204, 113, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+            transform: translateY(-2px);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+        }
+        .rf-actions .btn-off.active { 
+            background: linear-gradient(180deg, #b8261e 0%, #8a1a15 100%) !important; 
+            color: #ffffff !important; 
+            border-color: #e74c3c !important; 
+            box-shadow: 0 4px 0 #4a0d0a, 0 6px 22px rgba(231, 76, 60, 0.7), 0 0 30px rgba(231, 76, 60, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+            transform: translateY(-2px);
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+        }
+        
+        /* HISTORY */
+        .history-view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); }
+        .history-view-header h2 { font-weight: 600; font-size: 20px; color: var(--text-primary); display: flex; align-items: center; }
+        .history-view-header h2 i { color: var(--accent-color); margin-right: 10px; }
+        .clear-btn-inline { background: rgba(231, 76, 60, 0.12); border: 1px solid rgba(231, 76, 60, 0.2); color: var(--danger-color); padding: 6px 18px; border-radius: 40px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; }
+        .clear-btn-inline:hover:not(:disabled) { background: rgba(231, 76, 60, 0.25); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3); }
+        .clear-btn-inline:disabled { opacity: 0.3; cursor: not-allowed; }
+        .history-list { max-height: 420px; overflow-y: auto; padding-right: 4px; }
+        .history-list::-webkit-scrollbar { width: 6px; }
+        .history-list::-webkit-scrollbar-track { background: transparent; }
+        .history-list::-webkit-scrollbar-thumb { background: rgba(107, 199, 255, 0.25); border-radius: 10px; }
+        .history-item { display: flex; justify-content: space-between; padding: 12px 10px; border-bottom: 1px solid var(--border-color); color: var(--text-secondary); font-size: 14px; transition: all 0.3s ease; border-radius: 8px; }
+        .history-item:hover { background: rgba(107, 199, 255, 0.06); padding-left: 18px; transform: translateX(4px); }
+        .history-item .light-info { display: flex; align-items: center; gap: 10px; }
+        .history-item .timestamp { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+        .history-empty { text-align: center; color: var(--text-muted); padding: 40px 0; font-size: 15px; }
+        
+        /* ABOUT */
+        .about-content { padding: 6px 0 10px; }
+        .about-content h2 { font-size: 20px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary); display: flex; align-items: center; }
+        .about-content h2 i { color: var(--accent-color); margin-right: 10px; }
+        .about-card { background: var(--card-bg); border-radius: 20px; padding: 20px 24px; border: 1px solid var(--border-color); margin-bottom: 14px; transition: all 0.4s ease; }
+        .about-card:hover { border-color: rgba(107, 199, 255, 0.3); transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); }
+        .about-card p { color: var(--text-secondary); font-size: 15px; line-height: 1.8; }
+        .about-card .highlight { color: var(--accent-color); font-weight: 600; }
+        .about-card .tech-tag { display: inline-block; background: rgba(107, 199, 255, 0.08); color: var(--accent-color); padding: 4px 16px; border-radius: 40px; font-size: 12px; font-weight: 600; margin: 4px 4px 4px 0; transition: all 0.3s ease; cursor: default; }
+        .about-card .tech-tag:hover { background: rgba(107, 199, 255, 0.2); transform: translateY(-2px); box-shadow: 0 5px 15px var(--accent-glow); }
+        .about-features { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+        .about-feature { background: var(--card-bg); border-radius: 14px; padding: 16px; border: 1px solid var(--border-color); text-align: center; transition: all 0.4s ease; }
+        .about-feature:hover { transform: translateY(-4px); border-color: var(--accent-color); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3), 0 0 15px var(--accent-glow); }
+        .about-feature i { font-size: 28px; color: var(--accent-color); display: block; margin-bottom: 8px; filter: drop-shadow(0 0 8px var(--accent-glow)); }
+        .about-feature span { font-size: 13px; color: var(--text-secondary); font-weight: 500; }
+        
+        /* SETTINGS */
+        .settings-content h2 { font-size: 20px; font-weight: 600; margin-bottom: 20px; color: var(--text-primary); display: flex; align-items: center; }
+        .settings-content h2 i { color: var(--accent-color); margin-right: 10px; }
+        .settings-group { background: var(--card-bg); border-radius: 20px; padding: 20px 24px; border: 1px solid var(--border-color); margin-bottom: 16px; transition: all 0.3s ease; }
+        .settings-group:hover { border-color: rgba(107, 199, 255, 0.2); }
+        .settings-group h3 { font-size: 16px; font-weight: 700; color: var(--accent-color); margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1.5px solid rgba(107, 199, 255, 0.15); letter-spacing: 0.5px; display: flex; align-items: center; position: relative; text-shadow: 0 0 15px rgba(107, 199, 255, 0.4); }
+        .settings-group h3::after { content: ''; position: absolute; bottom: -2px; left: 0; width: 60px; height: 2px; background: linear-gradient(90deg, var(--accent-color), transparent); box-shadow: 0 0 12px var(--accent-glow); border-radius: 2px; }
+        .settings-group h3 i { margin-right: 8px; font-size: 18px; filter: drop-shadow(0 0 8px var(--accent-glow)); }
+        
+        .setting-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border-color); gap: 10px; }
+        .setting-item:last-child { border-bottom: none; }
+        .setting-item label { font-size: 14px; color: var(--text-secondary); min-width: 120px; font-weight: 500; }
+        .setting-item input[type="color"] { width: 42px; height: 42px; border: none; border-radius: 50%; padding: 3px; background: transparent; cursor: pointer; transition: transform 0.3s ease; }
+        .setting-item input[type="color"]:hover { transform: scale(1.15); box-shadow: 0 0 15px var(--accent-glow); }
+        .setting-item select { background: var(--bg-dashboard); color: var(--text-primary); border: 1.5px solid var(--border-color); border-radius: 12px; padding: 8px 14px; font-size: 14px; cursor: pointer; outline: none; font-family: inherit; min-width: 150px; transition: all 0.3s ease; }
+        .setting-item select:hover { border-color: var(--accent-color); }
+        .setting-item select:focus { border-color: var(--accent-color); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .setting-item select option { background: #1a2f44; }
+        .setting-item .toggle-switch { position: relative; width: 48px; height: 26px; background: var(--border-color); border-radius: 40px; cursor: pointer; transition: 0.4s; border: 2px solid var(--border-color); }
+        .setting-item .toggle-switch.active { background: var(--accent-color); border-color: var(--accent-color); box-shadow: 0 0 15px var(--accent-glow); }
+        .setting-item .toggle-switch .thumb { position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; background: #fff; border-radius: 50%; transition: 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .setting-item .toggle-switch.active .thumb { left: 24px; }
+        .setting-item input[type="text"], .setting-item input[type="url"], .setting-item input[type="email"], .setting-item input[type="password"] { background: var(--bg-dashboard); color: var(--text-primary); border: 1.5px solid var(--border-color); border-radius: 12px; padding: 8px 14px; font-size: 14px; outline: none; font-family: inherit; flex: 1; min-width: 150px; transition: all 0.3s ease; }
+        .setting-item input[type="text"]:focus, .setting-item input[type="url"]:focus { border-color: var(--accent-color); box-shadow: 0 0 0 3px var(--accent-glow); }
+        .setting-item .inline-inputs { display: flex; gap: 8px; flex-wrap: wrap; flex: 1; }
+        .btn-ok { background: linear-gradient(135deg, var(--accent-color), #4a9eff); color: #fff; border: none; padding: 8px 22px; border-radius: 30px; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden; box-shadow: 0 4px 15px rgba(107, 199, 255, 0.35); }
+        .btn-ok:hover { transform: translateY(-3px) scale(1.05); box-shadow: 0 10px 25px rgba(107, 199, 255, 0.55); }
+        .btn-ok:active { transform: scale(0.95); }
+        .status-msg { font-size: 12px; color: var(--text-muted); margin-left: 10px; font-weight: 500; }
+        .status-msg.success { color: var(--success-color); }
+        .logo-presets { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .logo-presets img { width: 42px; height: 42px; object-fit: contain; border-radius: 10px; border: 2px solid var(--border-color); cursor: pointer; padding: 3px; background: rgba(255, 255, 255, 0.05); transition: all 0.3s ease; }
+        .logo-presets img:hover, .logo-presets img.active { border-color: var(--accent-color); transform: scale(1.15); box-shadow: 0 0 15px var(--accent-glow); }
+        .bg-presets { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+        .bg-presets img { width: 64px; height: 42px; object-fit: cover; border-radius: 10px; border: 2px solid var(--border-color); cursor: pointer; transition: all 0.3s ease; }
+        .bg-presets img:hover, .bg-presets img.active { border-color: var(--accent-color); transform: scale(1.1); box-shadow: 0 0 15px var(--accent-glow); }
+        .settings-reset-btn { background: rgba(231, 76, 60, 0.12); border: 1px solid rgba(231, 76, 60, 0.2); color: var(--danger-color); padding: 10px 26px; border-radius: 40px; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 8px; transition: all 0.3s ease; }
+        .settings-reset-btn:hover { background: rgba(231, 76, 60, 0.25); transform: translateY(-3px); box-shadow: 0 8px 20px rgba(231, 76, 60, 0.35); }
+        
+        /* QR */
+        .qr-display-box { position: relative; text-align: center; margin-top: 20px; padding: 24px; background: #ffffff; border-radius: 20px; display: none; animation: fadeUp 0.5s ease; }
+        .qr-display-box img { width: 240px; height: 240px; border-radius: 12px; }
+        .qr-display-box .qr-info { color: #0b1a2e; margin-top: 14px; font-weight: 700; font-size: 16px; }
+        .qr-display-box .qr-sub { color: #666; font-size: 12px; margin-top: 4px; margin-bottom: 12px; }
+        .qr-close-btn { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #7a1a28, #e74c3c); color: #fff; border: 2px solid rgba(255, 255, 255, 0.3); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 4px 15px rgba(231, 76, 60, 0.5); z-index: 10; }
+        .qr-close-btn:hover { transform: scale(1.15) rotate(90deg); box-shadow: 0 6px 25px rgba(231, 76, 60, 0.8); }
+        .qr-close-btn i { font-size: 18px; }
+        
+        .btn-download { background: #0b1a2e; color: #fff; border: none; padding: 10px 26px; border-radius: 30px; font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; transition: all 0.3s ease; }
+        .btn-download:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3); }
+        
+        #reader { width: 100%; max-width: 600px; min-height: 400px; margin: 16px auto 0; border-radius: 16px; overflow: hidden; border: 2px solid var(--border-color); }
+        .scan-actions { text-align: center; margin-top: 10px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .btn-scan-start { background: linear-gradient(135deg, #1a7a3e, #2ecc71); color: #fff; }
+        .btn-scan-stop { background: linear-gradient(135deg, #7a1a28, #e74c3c) !important; color: #fff; }
+        
+        #pairQrReader, #pairQrHint { display: none !important; }
+        
+        .hamburger { display: none; position: fixed; top: 18px; left: 18px; z-index: 200; background: var(--bg-sidebar); backdrop-filter: blur(10px); border: 1px solid var(--border-color); border-radius: 14px; padding: 10px 14px; font-size: 22px; color: var(--text-primary); cursor: pointer; transition: all 0.3s ease; }
+        .hamburger:hover { transform: scale(1.1); border-color: var(--accent-color); }
+        
+        .wifi-status-box { background: rgba(231, 76, 60, 0.08); border: 1px solid rgba(231, 76, 60, 0.2); border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; display: flex; align-items: center; gap: 12px; transition: all 0.3s ease; }
+        .wifi-status-box.connected { background: rgba(46, 204, 113, 0.08); border-color: rgba(46, 204, 113, 0.3); box-shadow: 0 0 20px rgba(46, 204, 113, 0.15); }
+        .wifi-status-box .wifi-icon { font-size: 24px; color: var(--danger-color); }
+        .wifi-status-box.connected .wifi-icon { color: var(--success-color); animation: wifiPulse 2s ease-in-out infinite; }
+        @keyframes wifiPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+        .wifi-status-text { font-size: 14px; font-weight: 600; color: var(--danger-color); }
+        .wifi-status-box.connected .wifi-status-text { color: var(--success-color); }
+        .wifi-status-detail { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .wifi-scan-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 10px; cursor: pointer; border-bottom: 1px solid var(--border-color); transition: all 0.3s ease; }
+        .wifi-scan-item:last-child { border-bottom: none; }
+        .wifi-scan-item:hover { background: rgba(107, 199, 255, 0.12); transform: translateX(6px); box-shadow: -4px 0 0 var(--accent-color); }
+        .wifi-scan-item .wifi-lock { font-size: 16px; width: 24px; text-align: center; }
+        .wifi-scan-item .wifi-info { flex: 1; }
+        .wifi-scan-item .wifi-name { font-size: 14px; font-weight: 500; color: var(--text-primary); }
+        .wifi-scan-item .wifi-detail { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        .wifi-scan-item .wifi-signal { font-size: 12px; font-weight: 700; color: var(--accent-color); }
+        .wifi-scan-loading { text-align: center; padding: 20px; color: var(--text-muted); font-size: 13px; }
+        
+        .wifi-scan-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; margin-bottom: 8px; background: rgba(107, 199, 255, 0.08); border-radius: 10px; border-left: 3px solid var(--accent-color); }
+        .wifi-scan-header .wifi-scan-title { font-size: 13px; font-weight: 700; color: var(--accent-color); display: flex; align-items: center; gap: 6px; }
+        .wifi-scan-close-btn { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #7a1a28, #e74c3c); color: #fff; border: 2px solid rgba(255, 255, 255, 0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 3px 10px rgba(231, 76, 60, 0.4); }
+        .wifi-scan-close-btn:hover { transform: scale(1.15) rotate(90deg); box-shadow: 0 5px 18px rgba(231, 76, 60, 0.7); }
+        
+        /* BOTTOM NAV */
+        .bottom-nav { 
+            position: fixed; 
+            bottom: 24px; 
+            left: calc(50% + 115px); 
+            transform: translateX(-50%); 
+            width: calc(100% - 230px - 56px);
+            max-width: 860px;
+            background: var(--nav-dark); 
+            border: 1px solid rgba(255, 255, 255, 0.08); 
+            border-radius: 50px; 
+            padding: 8px 16px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-around; 
+            gap: 8px; 
+            z-index: 500; 
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6); 
+        }
+        .bottom-nav-item { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 10px 20px; border-radius: 40px; color: #64748b; cursor: pointer; background: transparent; border: none; font-family: inherit; transition: all 0.3s ease; }
+        .bottom-nav-item i { font-size: 20px; }
+        .bottom-nav-item span { font-size: 11px; font-weight: 600; letter-spacing: 0.3px; white-space: nowrap; }
+        .bottom-nav-item:hover { color: #94a3b8; }
+        .bottom-nav-item.active { background: rgba(59, 130, 246, 0.15); color: #3b82f6; }
+        .bottom-nav-item.active i, .bottom-nav-item.active span { color: #3b82f6; }
+        
+        /* TOAST */
+        .toast-notif { position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%) translateY(150px); background: linear-gradient(135deg, #1a7a3e, #2ecc71); color: #fff; padding: 14px 28px; border-radius: 40px; font-weight: 600; font-size: 14px; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), 0 0 25px rgba(46, 204, 113, 0.4); z-index: 999999; opacity: 0; transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); display: flex; align-items: center; gap: 10px; pointer-events: none; max-width: 90%; }
+        .toast-notif.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        
+        /* ============================================================
+           RESPONSIVE DESIGN (កែសម្រួលសម្រាប់ទូរសព្ទ និង Tablet)
+           ============================================================ */
+        @media (max-width: 820px) {
+            .dashboard { padding: 16px 12px; border-radius: 24px; }
+            .light-grid { gap: 8px; }
+            .light-card { padding: 10px 2px; border-radius: 12px; }
+            .light-icon { font-size: 20px; }
+            .light-name { font-size: 10px; }
+            .status-badge { font-size: 8px; padding: 1px 6px; min-width: 28px; }
+            .rf-card { flex: 1 1 calc(50% - 6px); min-width: 140px; }
+            .setting-item label { min-width: 80px; }
+            .settings-group h3 { font-size: 15px; }
+            .ac-temp-display .temp-set { font-size: 36px; }
+            .ac-room-temp .value { font-size: 26px; }
+            .ac-remote { padding: 16px; border-radius: 24px; }
+            
+            /* ⭐ កែសម្រួលផ្នែក AC ឱ្យមើលទៅស្អាតដូចរូបទី២ */
+            .ac-modes { 
+                grid-template-columns: repeat(5, 1fr); /* បង្ខំឱ្យនៅតែ ៥ ជួរដដែល ទោះបីជាអេក្រង់តូច */
+                gap: 4px; 
+            }
+            .ac-mode-btn { 
+                padding: 8px 0; 
+                font-size: 9px; 
+                border-radius: 12px;
+                gap: 2px;
+            }
+            .ac-mode-btn i { font-size: 16px; }
+            
+            .ac-controls-row { 
+                flex-direction: column; 
+                align-items: stretch; 
+                gap: 6px;
+            }
+            .ac-fan-group { 
+                width: 100%; 
+                flex-wrap: nowrap; /* បង្ខំឱ្យនៅជួរតែមួយ */
+                gap: 4px;
+            }
+            .ac-fan-btn { 
+                padding: 10px 0; 
+                font-size: 10px; 
+                border-radius: 20px;
+            }
+            .ac-swing-btn { 
+                width: 100%; 
+                justify-content: center; 
+                padding: 10px 0; 
+                font-size: 10px; 
+                border-radius: 20px;
+            }
+            .ac-temp-adj { 
+                margin-left: 0; 
+                width: 100%; 
+                justify-content: center; 
+                gap: 10px;
+                margin-top: 4px;
+            }
+            .ac-temp-adj button { 
+                flex: 0 1 100px; 
+                height: 40px; 
+                border-radius: 14px; 
+            }
+        }
+        
+        @media (max-width: 700px) {
+            .sidebar { transform: translateX(-100%); width: 260px; border-radius: 0 20px 20px 0; }
+            .sidebar.open { transform: translateX(0); }
+            .hamburger { display: block; }
+            .main-content { margin-left: 0; padding: 16px; padding-top: 72px; padding-bottom: 180px; }
+            .light-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+            .bottom-nav { left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: unset; padding: 10px 8px; bottom: 16px; border-radius: 40px; }
+            .bottom-nav-item { padding: 8px 4px; flex: 1; min-width: unset; }
+            .bottom-nav-item i { font-size: 18px; }
+            .bottom-nav-item span { font-size: 10px; font-weight: 600; }
+        }
+        
+        @media (max-width: 480px) {
+            .light-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+            .light-card { padding: 14px 4px; }
+            .light-icon { font-size: 24px; }
+            .light-name { font-size: 12px; }
+            .status-badge { font-size: 10px; padding: 2px 8px; min-width: 36px; }
+            .ac-display { flex-direction: column; align-items: flex-start; gap: 8px; }
+            .ac-room-temp { text-align: left; width: 100%; margin-top: 4px; }
+            .about-features { grid-template-columns: 1fr 1fr; }
+            .header h1 { font-size: 15px; }
+            .setting-item { flex-direction: column; align-items: flex-start; gap: 6px; }
+            .rf-card { flex: 1 1 100%; min-width: 100%; }
+            .login-box { padding: 28px 22px; }
+            .bottom-nav { bottom: 10px; padding: 8px 6px; }
+            .bottom-nav-item { padding: 6px 4px; }
+            .bottom-nav-item i { font-size: 16px; }
+            .bottom-nav-item span { font-size: 9px; }
+            .settings-group h3 { font-size: 14px; }
+            
+            /* កែសម្រួលបន្ថែមសម្រាប់អេក្រង់តូច */
+            .ac-modes { gap: 3px; }
+            .ac-mode-btn { padding: 6px 0; font-size: 8px; }
+            .ac-mode-btn i { font-size: 14px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="toast-notif" id="toastNotif">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastText">Success!</span>
+    </div>
+
+    <div class="login-overlay" id="loginOverlay">
+        <div class="login-box">
+            <span class="login-logo"><i class="fas fa-microchip"></i></span>
+            <h2>Smart Room IOT</h2>
+            <p class="login-sub" data-login-i18n="login_sub">
+                សូមបញ្ចូលឈ្មោះអ្នកប្រើ និង Password<br>
+                ដើម្បីចូលប្រើប្រាស់ប្រព័ន្ធ
+            </p>
+
+            <div class="login-lang-row">
+                <i class="fas fa-globe"></i>
+                <select id="loginLangSelect">
+                    <option value="km">ខ្មែរ (Khmer)</option>
+                    <option value="en">English</option>
+                    <option value="zh">中文 (Chinese)</option>
+                    <option value="ja">日本語 (Japanese)</option>
+                    <option value="ko">한국어 (Korean)</option>
+                    <option value="vi">Tiếng Việt (Vietnamese)</option>
+                    <option value="lo">ລາວ (Lao)</option>
+                    <option value="my">မြန်မာ (Myanmar)</option>
+                    <option value="id">Bahasa Indonesia</option>
+                    <option value="ms">Bahasa Melayu</option>
+                </select>
+            </div>
+
+            <div class="login-field">
+                <label data-login-i18n="username_label">👤 ឈ្មោះអ្នកប្រើ (Username)</label>
+                <input type="text" id="overlayEmail" autocomplete="username" />
+            </div>
+
+            <div class="login-field">
+                <label data-login-i18n="password_label">🔑 Password</label>
+                <div class="password-wrapper">
+                    <input type="password" id="overlayPassword" autocomplete="current-password" />
+                    <button type="button" class="toggle-password" id="togglePasswordBtn">
+                        <i class="fas fa-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button class="login-btn ripple-container" id="loginBtn">
+                <i class="fas fa-sign-in-alt"></i> <span data-login-i18n="login_btn">ចូលប្រើប្រាស់</span>
+            </button>
+
+            <div class="login-status" id="loginStatus"></div>
+        </div>
+    </div>
+
+    <button class="hamburger" id="hamburgerBtn"><i class="fas fa-bars"></i></button>
+
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <span class="brand-icon" id="brandIcon"><i class="fas fa-microchip"></i></span>
+            <h2 id="brandText" style="display: none;">
+                <span id="brandLine1" data-site-i18n="brand_line1">ការរចនា និងការអភិវឌ្ឍ</span><br />
+                <span id="brandLine2" data-site-i18n="brand_line2">ប្រព័ន្ធគ្រប់គ្រងបន្ទប់</span><br />
+                <span id="brandLine3"><span id="brandLine3Text" data-site-i18n="brand_line3">ឆ្លាតវៃតាមរយៈ</span> <span class="iot-tag" id="brandIoTTag">IOT</span></span>
+            </h2>
+        </div>
+
+        <nav class="sidebar-nav" id="sidebarNav">
+            <a href="#" class="active ripple-container" data-view="home"><i class="fas fa-home"></i> <span data-site-i18n="nav_home">Home</span></a>
+            <a href="#" class="ripple-container" data-view="history"><i class="fas fa-history"></i> <span data-site-i18n="nav_history">History</span></a>
+            <a href="#" class="ripple-container" data-view="qrcode"><i class="fas fa-qrcode"></i> <span data-site-i18n="nav_qr">QR Code</span></a>
+            <a href="#" class="ripple-container" data-view="about"><i class="fas fa-info-circle"></i> <span data-site-i18n="nav_about">About</span></a>
+            <a href="#" class="ripple-container" data-view="settings"><i class="fas fa-cog"></i> <span data-site-i18n="nav_settings">ការកំណត់</span></a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <button class="logout-btn ripple-container" id="logoutBtn">
+                <i class="fas fa-sign-out-alt"></i> <span data-site-i18n="logout">ចាកចេញ</span>
+            </button>
+            <div style="margin-top: 10px;">
+                <i class="fas fa-circle" style="color: #2ecc71; font-size: 8px;"></i> &nbsp;
+                <span id="loggedUserEmail" style="font-size: 10px;">-</span>
+            </div>
+        </div>
+    </aside>
+
+    <main class="main-content" id="mainContent" style="display:none;">
+        <div class="dashboard" id="dashboard">
+
+            <section class="view active" id="view-home">
+                <header class="header">
+                    <span class="icon-head"><i class="fas fa-lightbulb"></i></span>
+                    <h1><span data-site-i18n="control_room">បន្ទប់បញ្ជា</span></h1>
+                </header>
+
+                <div class="light-grid" id="lightGrid">
+                    <div class="light-card off ripple-container" data-light="1">
+                        <span class="light-icon"><i class="fas fa-lightbulb"></i></span>
+                        <div class="light-name" data-site-i18n="light_1">អំពូលទី១</div>
+                        <div class="status-badge" id="statusLED">បិទ</div>
+                    </div>
+                    <div class="light-card off ripple-container" data-light="2">
+                        <span class="light-icon"><i class="fas fa-lightbulb"></i></span>
+                        <div class="light-name" data-site-i18n="light_2">អំពូលទី២</div>
+                        <div class="status-badge" id="statusLED1">បិទ</div>
+                    </div>
+                    <div class="light-card off ripple-container" data-light="3">
+                        <span class="light-icon"><i class="fas fa-lightbulb"></i></span>
+                        <div class="light-name" data-site-i18n="light_3">អំពូលទី៣</div>
+                        <div class="status-badge" id="statusLED2">បិទ</div>
+                    </div>
+                    <div class="light-card off ripple-container" data-light="4">
+                        <span class="light-icon"><i class="fas fa-lightbulb"></i></span>
+                        <div class="light-name" data-site-i18n="light_4">អំពូលទី៤</div>
+                        <div class="status-badge" id="statusLED3">បិទ</div>
+                    </div>
+                </div>
+
+                <div class="action-row">
+                    <button class="action-btn all-on ripple-container" id="allOnBtn"><i class="fas fa-power-off"></i> <span data-site-i18n="all_on">ALL ON</span></button>
+                    <button class="action-btn all-off ripple-container" id="allOffBtn"><i class="fas fa-power-off"></i> <span data-site-i18n="all_off">ALL OFF</span></button>
+                </div>
+
+                <div class="fb-status" id="fbStatus">
+                    <i class="fas fa-circle" style="color: #e74c3c;"></i> <span id="espStatusText" data-site-i18n="esp_disconnected">ESP Disconnected</span>
+                </div>
+
+                <div class="ac-remote">
+                    <div class="ac-header">
+                        <div class="ac-brand"><span class="logo"><i class="fas fa-snowflake"></i> <span data-site-i18n="ac_title">ម៉ាស៊ីនត្រជាក់</span></span></div>
+                        <button class="ac-power-btn ripple-container" id="acPowerBtn"><i class="fas fa-power-off"></i></button>
+                    </div>
+                    <div class="ac-display">
+                        <div class="ac-temp-display">
+                            <span class="temp-set" id="acSetTemp">24</span>
+                            <span class="temp-unit">°C</span>
+                            <span class="temp-mode-label" id="acModeLabel">Cool</span>
+                        </div>
+                        <div class="ac-room-temp">
+                            <div class="label" data-site-i18n="room_temp">សីតុណ្ហភាពក្នុងបន្ទប់</div>
+                            <div><span class="value" id="acRoomTemp">27</span><span class="unit">°C</span></div>
+                        </div>
+                    </div>
+                    <div class="ac-modes">
+                        <button class="ac-mode-btn active ripple-container" data-mode="cool"><i class="fas fa-snowflake"></i> <span data-site-i18n="mode_cool">ត្រជាក់</span></button>
+                        <button class="ac-mode-btn ripple-container" data-mode="heat"><i class="fas fa-sun"></i> <span data-site-i18n="mode_heat">ក្តៅ</span></button>
+                        <button class="ac-mode-btn ripple-container" data-mode="dry"><i class="fas fa-tint"></i> <span data-site-i18n="mode_dry">ស្ងួត</span></button>
+                        <button class="ac-mode-btn ripple-container" data-mode="fan"><i class="fas fa-wind"></i> <span data-site-i18n="mode_fan">កង្ហារ</span></button>
+                        <button class="ac-mode-btn ripple-container" data-mode="auto"><i class="fas fa-robot"></i> <span data-site-i18n="mode_auto">ស្វ័យប្រវត្តិ</span></button>
+                    </div>
+                    <div class="ac-controls-row">
+                        <div class="ac-fan-group">
+                            <button class="ac-fan-btn ripple-container" data-speed="low"><span data-site-i18n="fan_low">ទាប</span></button>
+                            <button class="ac-fan-btn ripple-container" data-speed="med"><span data-site-i18n="fan_med">មធ្យម</span></button>
+                            <button class="ac-fan-btn ripple-container" data-speed="high"><span data-site-i18n="fan_high">ខ្ពស់</span></button>
+                            <button class="ac-fan-btn active ripple-container" data-speed="auto"><span data-site-i18n="fan_auto">ស្វ័យប្រវត្តិ</span></button>
+                        </div>
+                        <button class="ac-swing-btn ripple-container" id="acSwingBtn"><i class="fas fa-arrows-alt-v"></i> <span data-site-i18n="swing">បង្វិល</span></button>
+                        <div class="ac-temp-adj">
+                            <button class="ripple-container" id="acTempDown"><i class="fas fa-minus"></i></button>
+                            <button class="ripple-container" id="acTempUp"><i class="fas fa-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="rfDevicesContainer" class="rf-devices-grid"></div>
+            </section>
+
+            <section class="view" id="view-history">
+                <div class="history-view-header">
+                    <h2><i class="fas fa-history"></i> <span data-site-i18n="history_title">ប្រវត្តិ</span></h2>
+                    <button class="clear-btn-inline" id="clearHistoryInline" disabled data-site-i18n="clear_all">សម្អាតទាំងអស់</button>
+                </div>
+                <div class="history-list" id="historyList">
+                    <div class="history-empty" data-site-i18n="loading">កំពុងផ្ទុក...</div>
+                </div>
+            </section>
+
+            <section class="view" id="view-qrcode">
+                <div class="settings-content">
+                    <h2><i class="fas fa-qrcode"></i> <span data-site-i18n="qr_title">QR Code សម្រាប់ Device</span></h2>
+
+                    <div class="settings-group">
+                        <h3>📱 <span data-site-i18n="qr_create">បង្កើត QR Code</span></h3>
+                        <div class="setting-item">
+                            <label data-site-i18n="device_name">ឈ្មោះ Device</label>
+                            <input type="text" id="qrDeviceName" placeholder="ឧ. កង្ហារទី១" />
+                        </div>
+                        <div class="setting-item">
+                            <label>ID</label>
+                            <input type="text" id="qrDeviceId" placeholder="ឧ. 01" />
+                        </div>
+                        <div style="text-align: right; margin-top: 12px;">
+                            <button class="btn-ok ripple-container" id="generateQrBtn"><i class="fas fa-qrcode"></i> <span data-site-i18n="qr_generate">បង្កើត</span></button>
+                        </div>
+                        <div class="qr-display-box" id="qrCodeDisplay">
+                            <button class="qr-close-btn" id="qrCloseBtn" title="Close">
+                                <i class="fas fa-times"></i>
+                            </button>
+                            <img id="qrImage" src="" alt="QR Code" />
+                            <div class="qr-info" id="qrCodeInfo"></div>
+                            <div class="qr-sub" data-site-i18n="qr_sub">📱 Scan QR ដើម្បីបង្កើត Device ដោយស្វ័យប្រវត្តិ</div>
+                            <a id="downloadQrBtn" class="btn-download" download="qr_device.png" href="#">
+                                <i class="fas fa-download"></i> <span data-site-i18n="download">ទាញយក</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3>📷 <span data-site-i18n="qr_scan">Scan QR Code</span></h3>
+                        <div class="scan-actions">
+                            <button class="btn-ok btn-scan-start ripple-container" id="startScanBtn"><i class="fas fa-camera"></i> <span data-site-i18n="open_camera">បើកកាមេរ៉ា</span></button>
+                            <button class="btn-ok btn-scan-stop ripple-container" id="stopScanBtn" style="display: none;"><i class="fas fa-stop"></i> <span data-site-i18n="close_camera">បិទកាមេរ៉ា</span></button>
+                        </div>
+                        <div id="reader"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="view" id="view-about">
+                <div class="about-content">
+                    <h2><i class="fas fa-info-circle"></i> <span data-site-i18n="about_title">អំពីប្រព័ន្ធ</span></h2>
+                    <div class="about-card">
+                        <p>
+                            <span class="highlight" data-site-i18n="about_highlight">ប្រព័ន្ធគ្រប់គ្រងបន្ទប់ឆ្លាតវៃ</span>
+                            <span data-site-i18n="about_desc"> នេះត្រូវបានរចនាឡើង ដើម្បីគ្រប់គ្រងទាំងអំពូល និងម៉ាស៊ីនត្រជាក់ ពីចម្ងាយ តាមរយៈ </span>
+                            <span class="highlight">Firebase Realtime Database</span> ។
+                        </p>
+                    </div>
+                    <div class="about-card">
+                        <p style="margin-bottom: 10px; font-weight: 500; color: var(--text-secondary);">
+                            <i class="fas fa-cogs" style="color: var(--accent-color);"></i> &nbsp;<span data-site-i18n="tech">បច្ចេកវិទ្យា:</span>
+                        </p>
+                        <div>
+                            <span class="tech-tag"><i class="fab fa-html5"></i> HTML5</span>
+                            <span class="tech-tag"><i class="fab fa-css3-alt"></i> CSS3</span>
+                            <span class="tech-tag"><i class="fab fa-js"></i> JavaScript</span>
+                            <span class="tech-tag"><i class="fas fa-database"></i> Firebase</span>
+                            <span class="tech-tag"><i class="fas fa-qrcode"></i> QR Code</span>
+                        </div>
+                    </div>
+                    <div class="about-features">
+                        <div class="about-feature"><i class="fas fa-lightbulb"></i><span data-site-i18n="feat_light">គ្រប់គ្រងអំពូល ៤</span></div>
+                        <div class="about-feature"><i class="fas fa-snowflake"></i><span data-site-i18n="feat_ac">ម៉ាស៊ីនត្រជាក់</span></div>
+                        <div class="about-feature"><i class="fas fa-history"></i><span data-site-i18n="feat_history">កត់ត្រាប្រវត្តិ</span></div>
+                        <div class="about-feature"><i class="fas fa-sync-alt"></i><span data-site-i18n="feat_sync">សមកាលកម្មពេលវេលា</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="view" id="view-settings">
+                <div class="settings-content">
+                    <h2><i class="fas fa-cog"></i> <span data-site-i18n="settings_title">ការកំណត់</span></h2>
+
+                    <div class="settings-group">
+                        <h3 data-site-i18n="pair_section">🔗 Pair Device</h3>
+                        <div class="setting-item">
+                            <label data-site-i18n="device_id">Device ID</label>
+                            <input type="text" id="pairDeviceId" placeholder="ឧ. ESP32-001" style="flex:1;" />
+                        </div>
+                        <div class="setting-item">
+                            <label data-site-i18n="pin_code">PIN Code</label>
+                            <input type="text" id="pairDevicePin" placeholder="ឧ. 1234" maxlength="8" style="flex:1;" />
+                        </div>
+                        <div id="pairedDeviceInfo" style="display:none; background: rgba(46, 204, 113, 0.08); border: 1px solid rgba(46, 204, 113, 0.2); border-radius: 14px; padding: 14px 18px; margin-bottom: 16px; margin-top: 12px;">
+                            <div style="font-size: 14px; font-weight: 600; color: #2ecc71;">
+                                <i class="fas fa-check-circle"></i> <span data-site-i18n="paired">Device បាន Pair រួច</span>
+                            </div>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;" id="pairedDeviceDetail"></div>
+                        </div>
+                        <div style="text-align: right; margin-top: 10px;">
+                            <button class="btn-ok ripple-container" id="pairDeviceBtn"><i class="fas fa-link"></i> <span data-site-i18n="pair_btn">Pair Device</span></button>
+                            <button class="btn-ok ripple-container" id="unpairDeviceBtn" style="background: #e74c3c; margin-left: 6px; display: none;"><i class="fas fa-unlink"></i> <span data-site-i18n="unpair_btn">Unpair</span></button>
+                            <button class="btn-ok ripple-container" id="scanPairQrBtn" style="background: linear-gradient(135deg, #8e44ad, #9b59b6); margin-left: 6px;"><i class="fas fa-qrcode"></i> <span data-site-i18n="scan_qr_btn">Scan QR</span></button>
+                        </div>
+                        
+                        <!-- លាក់ UI Scanner ចាស់នៅទីនេះ ដើម្បីបង្រួមឱ្យប្រើតែ Scanner ចម្បង (មិនលុបកូដចោលទេ) -->
+                        <div id="pairQrReader" style="display: none; margin-top: 12px; max-width: 350px; margin-left: auto; margin-right: auto; border-radius: 16px; overflow: hidden; border: 2px solid var(--accent-color); box-shadow: 0 0 20px var(--accent-glow);"></div>
+                        <div id="pairQrHint" style="display: none; text-align: center; margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+                            📱 ដាក់ QR Code ក្នុងស៊ុម → Auto-Pair
+                        </div>
+                        
+                        <div id="pairStatus" style="text-align: right; margin-top: 8px; font-size: 12px;"></div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3 data-site-i18n="wifi_section">📶 កំណត់ WiFi</h3>
+                        <div class="wifi-status-box" id="wifiCurrentStatus">
+                            <i class="fas fa-wifi wifi-icon"></i>
+                            <div style="flex: 1;">
+                                <div class="wifi-status-text" id="wifiStatusText">កំពុងពិនិត្យ...</div>
+                                <div class="wifi-status-detail" id="wifiStatusDetail"></div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                            <button class="btn-ok ripple-container" id="startWifiScanBtn" style="flex: 1;">
+                                <i class="fas fa-search"></i> <span data-site-i18n="scan_wifi">Scan WiFi ជុំវិញ</span>
+                            </button>
+                        </div>
+                        <div id="wifiScanList" style="display: none; background: rgba(0,0,0,0.2); border-radius: 14px; padding: 8px; margin-bottom: 14px; max-height: 300px; overflow-y: auto;">
+                            <div class="wifi-scan-header">
+                                <div class="wifi-scan-title">
+                                    <i class="fas fa-wifi"></i>
+                                    <span id="wifiScanCount">WiFi ដែលរកឃើញ</span>
+                                </div>
+                                <button class="wifi-scan-close-btn" id="wifiScanCloseBtn" title="Close">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div id="wifiScanItems"></div>
+                        </div>
+                        <div class="setting-item">
+                            <label data-site-i18n="wifi_ssid">ឈ្មោះ WiFi (SSID)</label>
+                            <input type="text" id="wifiSSID" placeholder="ឧ. Heng" style="flex:1;" />
+                        </div>
+                        <div class="setting-item">
+                            <label data-site-i18n="password_label_short">Password</label>
+                            <input type="text" id="wifiPassword" placeholder="ឧ. 33333333" style="flex:1;" />
+                        </div>
+                        <div style="text-align: right; margin-top: 10px;">
+                            <button class="btn-ok ripple-container" id="updateWifiBtn"><i class="fas fa-wifi"></i> <span data-site-i18n="change_wifi">ប្តូរ WiFi</span></button>
+                            <button class="btn-ok ripple-container" id="resetWifiBtn" style="background: #e74c3c; margin-left: 6px;"><i class="fas fa-redo"></i> <span data-site-i18n="reset_wifi">Reset WiFi</span></button>
+                        </div>
+                        <div id="wifiStatus" style="text-align: right; margin-top: 8px; font-size: 12px;"></div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3 data-site-i18n="add_device_section">➕ បន្ថែម Device</h3>
+                        <div class="setting-item">
+                            <label data-site-i18n="device_name">ឈ្មោះ Device</label>
+                            <input type="text" id="newDeviceName" placeholder="ឧ. កង្ហារទី១" style="flex:1;" />
+                        </div>
+                        <div class="setting-item">
+                            <label>ID</label>
+                            <input type="text" id="newDeviceId" placeholder="ឧ. 01" style="flex:1;" />
+                        </div>
+                        <div style="text-align: right; margin-top: 10px;">
+                            <button class="btn-ok ripple-container" id="addDeviceBtn"><i class="fas fa-check"></i> OK</button>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3 data-site-i18n="appearance">រូបរាង</h3>
+                        <div class="setting-item">
+                            <label for="bgColor" data-site-i18n="bg_color">ពណ៌ផ្ទៃខាងក្រោយ (Body)</label>
+                            <input type="color" id="bgColor" value="#0b1a2e" />
+                        </div>
+                        <div class="setting-item">
+                            <label for="dashboardColor" data-site-i18n="dashboard_color">ពណ៌ផ្ទៃ Dashboard</label>
+                            <input type="color" id="dashboardColor" value="#0b1a2e" />
+                        </div>
+                        <div class="setting-item">
+                            <label for="accentColor" data-site-i18n="accent_color">ពណ៌សម្គាល់ (Accent)</label>
+                            <input type="color" id="accentColor" value="#6bc7ff" />
+                        </div>
+                        <div class="setting-item">
+                            <label for="textColor" data-site-i18n="text_color">ពណ៌អក្សរ</label>
+                            <input type="color" id="textColor" value="#f0f6ff" />
+                        </div>
+                        <div class="setting-item">
+                            <label data-site-i18n="dark_mode">របៀបងងឹត (Dark Mode)</label>
+                            <div class="toggle-switch" id="darkModeToggle"><div class="thumb"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3 data-site-i18n="language_section">ភាសា</h3>
+                        <div class="setting-item">
+                            <label for="langSelect" data-site-i18n="choose_lang">ជ្រើសរើសភាសា</label>
+                            <select id="langSelect">
+                                <option value="km">ភាសាខ្មែរ</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3 data-site-i18n="font_section">អក្សរ</h3>
+                        <div class="setting-item">
+                            <label for="fontSize" data-site-i18n="choose_font_size">ទំហំអក្សរ</label>
+                            <select id="fontSize">
+                                <option value="14px">តូច (14px)</option>
+                                <option value="16px" selected>មធ្យម (16px)</option>
+                                <option value="18px">ធំ (18px)</option>
+                                <option value="20px">ធំជាង (20px)</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <label for="fontFamily" data-site-i18n="choose_font">ពុម្ពអក្សរទូទៅ</label>
+                            <select id="fontFamily">
+                                <option value="'Kantumruy Pro', 'Segoe UI', 'Khmer OS', system-ui, sans-serif" selected>Kantumruy Pro</option>
+                                <option value="'Battambang', 'Khmer OS Battambang', sans-serif">Khmer OS Battambang</option>
+                                <option value="'Segoe UI', 'Khmer OS', system-ui, sans-serif">Khmer OS / Segoe UI</option>
+                                <option value="Arial, 'Khmer OS', sans-serif">Arial</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3 data-site-i18n="bg_image_section">🖼️ រូបភាពផ្ទៃខាងក្រោយ</h3>
+                        <div class="setting-item">
+                            <label for="bgImageUrl" data-site-i18n="bg_url">URL រូបភាព</label>
+                            <input type="url" id="bgImageUrl" placeholder="https://example.com/image.jpg" style="flex:1;" />
+                            <button class="btn-ok ripple-container" id="bgImageApplyBtn"><i class="fas fa-check"></i> OK</button>
+                        </div>
+                        <div class="setting-item" style="border-bottom: none;">
+                            <label data-site-i18n="choose_bg">ជ្រើសរើសរូបភាព</label>
+                            <div class="bg-presets" id="bgPresets">
+                                <img src="https://images6.alphacoders.com/103/1035008.jpg" alt="BG 1" data-url="https://images6.alphacoders.com/103/1035008.jpg" />
+                                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTkV_5KqekIWlXDShH3ITI0O8LEQnWOK1SdQreT3tDlGA&s=10" alt="BG 2" data-url="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTkV_5KqekIWlXDShH3ITI0O8LEQnWOK1SdQreT3tDlGA&s=10" />
+                                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQaWuyryhT1L_zCzhr7vSlY0JtNuHcBeDwW4HVMwN2NoQ&s=10" alt="BG 3" data-url="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQaWuyryhT1L_zCzhr7vSlY0JtNuHcBeDwW4HVMwN2NoQ&s=10" />
+                                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-sXtJe03iGq6aFQ3JmUEfxPt3uQZZm_1s7ZK-X8MqRg&s=10" alt="BG 4" data-url="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-sXtJe03iGq6aFQ3JmUEfxPt3uQZZm_1s7ZK-X8MqRg&s=10" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-group">
+                        <h3 data-site-i18n="sidebar_section">📝 ប្ដូរ Sidebar</h3>
+                        <div class="setting-item">
+                            <label for="sidebarLogo" data-site-i18n="logo_url">Logo URL</label>
+                            <input type="url" id="sidebarLogo" placeholder="https://example.com/logo.png" style="flex:1;" />
+                            <button class="btn-ok ripple-container" id="logoApplyBtn"><i class="fas fa-check"></i> OK</button>
+                        </div>
+                        <div class="setting-item">
+                            <label data-site-i18n="choose_logo">ជ្រើសរើស Logo</label>
+                            <div class="logo-presets" id="logoPresets">
+                                <img src="https://i.pinimg.com/736x/57/10/19/57101959bf924d40eb6c2129f711ad18.jpg" alt="Logo 1" data-url="https://i.pinimg.com/736x/57/10/19/57101959bf924d40eb6c2129f711ad18.jpg" />
+                                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQLfccSulCi8bpbSX0qqtzTcLbB2CTDQdEXi9XsXH4tcg&s=10" alt="Logo 2" data-url="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQLfccSulCi8bpbSX0qqtzTcLbB2CTDQdEXi9XsXH4tcg&s=10" />
+                                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQnlYf4o68wXxYtPYcI44FdYIY6lozelv4E2c3hbIKjRA&s=10" alt="Logo 3" data-url="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQnlYf4o68wXxYtPYcI44FdYIY6lozelv4E2c3hbIKjRA&s=10" />
+                                <img src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnjK4p6reHfLPQFY8vMywCMWnk-PH0In74XpTlOeB7Hw&s=10" alt="Logo 4" data-url="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTnjK4p6reHfLPQFY8vMywCMWnk-PH0In74XpTlOeB7Hw&s=10" />
+                            </div>
+                        </div>
+                        <div class="setting-item" style="border-bottom: none; display: none;">
+                            <label data-site-i18n="brand_text">អត្ថបទ &amp; ពុម្ពអក្សរ</label>
+                            <div class="inline-inputs" style="flex-direction: column; gap: 6px; width: 100%;">
+                                <div style="display: flex; gap: 6px; flex-wrap: wrap; width: 100%;">
+                                    <input type="text" id="brandLine1Input" placeholder="បន្ទាត់ទី១" value="ការរចនា និងការអភិវឌ្ឍ" style="flex:1; min-width:100px;" />
+                                    <input type="text" id="brandLine2Input" placeholder="បន្ទាត់ទី២" value="ប្រព័ន្ធគ្រប់គ្រងបន្ទប់" style="flex:1; min-width:100px;" />
+                                    <input type="text" id="brandLine3Input" placeholder="បន្ទាត់ទី៣" value="ឆ្លាតវៃតាមរយៈ" style="flex:1; min-width:100px;" />
+                                </div>
+                                <div style="display: flex; gap: 6px; flex-wrap: wrap; width: 100%; align-items: center;">
+                                    <select id="sidebarFontFamily" style="flex:1; min-width:150px;">
+                                        <option value="'Kantumruy Pro', 'Segoe UI', 'Khmer OS', system-ui, sans-serif">Kantumruy Pro</option>
+                                        <option value="'Battambang', 'Khmer OS Battambang', sans-serif">Khmer OS Battambang</option>
+                                        <option value="'Segoe UI', 'Khmer OS', system-ui, sans-serif">Khmer OS / Segoe UI</option>
+                                    </select>
+                                    <button class="btn-ok ripple-container" id="sidebarApplyBtn"><i class="fas fa-check"></i> OK</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="settings-reset-btn ripple-container" id="resetSettingsBtn" data-site-i18n="reset_settings">កំណត់តម្លៃដើម</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <nav class="bottom-nav" id="bottomNav">
+        <button class="bottom-nav-item active ripple-container" data-view="home"><i class="fas fa-home"></i><span data-site-i18n="nav_home">Home</span></button>
+        <button class="bottom-nav-item ripple-container" data-view="history"><i class="fas fa-history"></i><span data-site-i18n="nav_history">History</span></button>
+        <button class="bottom-nav-item ripple-container" data-view="qrcode"><i class="fas fa-qrcode"></i><span data-site-i18n="nav_qr">QR Code</span></button>
+        <button class="bottom-nav-item ripple-container" data-view="about"><i class="fas fa-info-circle"></i><span data-site-i18n="nav_about">About</span></button>
+        <button class="bottom-nav-item ripple-container" data-view="settings"><i class="fas fa-cog"></i><span data-site-i18n="nav_settings">Settings</span></button>
+    </nav>
+
+    <script>
+        const WEBSITE_URL = 'https://sengsokheng141312-cell.github.io/Smart-Room/';
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAlZxJemV_-MpDVVWbcajRJg6tvVOw5RCk",
+            authDomain: "led-bfbfc.firebaseapp.com",
+            databaseURL: "https://led-bfbfc-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "led-bfbfc",
+            storageBucket: "led-bfbfc.appspot.com",
+            messagingSenderId: "969049323393",
+            appId: "1:969049323393:web:dd384df779e366a6675a80"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+            .catch((error) => console.warn('Persistence error:', error));
+
+        const LOGIN_TR = {
+            km: { login_sub: 'សូមបញ្ចូលឈ្មោះអ្នកប្រើ និង Password<br>ដើម្បីចូលប្រើប្រាស់ប្រព័ន្ធ', username_label: '👤 ឈ្មោះអ្នកប្រើ (Username)', password_label: '🔑 Password', login_btn: 'ចូលប្រើប្រាស់', err_fill: '❌ សូមបំពេញឈ្មោះ និង Password!', err_user_len: '❌ ឈ្មោះត្រូវមាន 3-20 តួ (a-z, 0-9, _)!', err_pass_len: '❌ Password ត្រូវមានយ៉ាងតិច 4 តួ!', checking: '⏳ កំពុងពិនិត្យ...', connecting: '⏳ កំពុងភ្ជាប់...', creating_account: '⏳ កំពុងបង្កើតគណនីថ្មី...', err_login_fail: '❌ មិនអាចចូលប្រើបាន!', err_wrong_pass: '❌ Password ខុស!', err_weak_pass: '❌ Password ខ្សោយពេក!', success_login: '✅ ចូលប្រើប្រាស់ជោគជ័យ!' },
+            en: { login_sub: 'Please enter your username and password<br>to access the system', username_label: '👤 Username', password_label: '🔑 Password', login_btn: 'Sign In', err_fill: '❌ Please enter username and password!', err_user_len: '❌ Username must be 3-20 characters!', err_pass_len: '❌ Password must be at least 4 characters!', checking: '⏳ Checking...', connecting: '⏳ Connecting...', creating_account: '⏳ Creating new account...', err_login_fail: '❌ Login failed!', err_wrong_pass: '❌ Wrong password!', err_weak_pass: '❌ Password is too weak!', success_login: '✅ Login successful!' },
+            zh: { login_sub: '请输入您的用户名和密码<br>以访问系统', username_label: '👤 用户名', password_label: '🔑 密码', login_btn: '登录', err_fill: '❌ 请输入用户名和密码！', err_user_len: '❌ 用户名必须为3-20个字符！', err_pass_len: '❌ 密码至少为4个字符！', checking: '⏳ 检查中...', connecting: '⏳ 连接中...', creating_account: '⏳ 正在创建新账户...', err_login_fail: '❌ 登录失败！', err_wrong_pass: '❌ 密码错误！', err_weak_pass: '❌ 密码太弱！', success_login: '✅ 登录成功！' },
+            ja: { login_sub: 'ユーザー名とパスワードを入力してください<br>システムにアクセスするため', username_label: '👤 ユーザー名', password_label: '🔑 パスワード', login_btn: 'ログイン', err_fill: '❌ ユーザー名とパスワードを入力してください！', err_user_len: '❌ ユーザー名は3〜20文字である必要があります！', err_pass_len: '❌ パスワードは4文字以上である必要があります！', checking: '⏳ 確認中...', connecting: '⏳ 接続中...', creating_account: '⏳ 新しいアカウントを作成中...', err_login_fail: '❌ ログインに失敗しました！', err_wrong_pass: '❌ パスワードが間違っています！', err_weak_pass: '❌ パスワードが簡単すぎます！', success_login: '✅ ログイン成功！' },
+            ko: { login_sub: '사용자 이름과 비밀번호를 입력하세요<br>시스템에 접속하려면', username_label: '👤 사용자 이름', password_label: '🔑 비밀번호', login_btn: '로그인', err_fill: '❌ 사용자 이름과 비밀번호를 입력하세요!', err_user_len: '❌ 사용자 이름은 3~20자여야 합니다!', err_pass_len: '❌ 비밀번호는 최소 4자 이상이어야 합니다!', checking: '⏳ 확인 중...', connecting: '⏳ 연결 중...', creating_account: '⏳ 새 계정 생성 중...', err_login_fail: '❌ 로그인 실패!', err_wrong_pass: '❌ 비밀번호가 틀렸습니다!', err_weak_pass: '❌ 비밀번호가 너무 약합니다!', success_login: '✅ 로그인 성공!' },
+            vi: { login_sub: 'Vui lòng nhập tên đăng nhập và mật khẩu<br>để truy cập hệ thống', username_label: '👤 Tên đăng nhập', password_label: '🔑 Mật khẩu', login_btn: 'Đăng nhập', err_fill: '❌ Vui lòng nhập tên đăng nhập và mật khẩu!', err_user_len: '❌ Tên đăng nhập phải từ 3-20 ký tự!', err_pass_len: '❌ Mật khẩu phải có ít nhất 4 ký tự!', checking: '⏳ Đang kiểm tra...', connecting: '⏳ Đang kết nối...', creating_account: '⏳ Đang tạo tài khoản mới...', err_login_fail: '❌ Đăng nhập thất bại!', err_wrong_pass: '❌ Sai mật khẩu!', err_weak_pass: '❌ Mật khẩu quá yếu!', success_login: '✅ Đăng nhập thành công!' },
+            lo: { login_sub: 'ກະລຸນາໃສ່ຊື່ຜູ້ໃຊ້ ແລະ ລະຫັດຜ່ານ<br>ເພື່ອເຂົ້າໃຊ້ລະບົບ', username_label: '👤 ຊື່ຜູ້ໃຊ້', password_label: '🔑 ລະຫັດຜ່ານ', login_btn: 'ເຂົ້າໃຊ້', err_fill: '❌ ກະລຸນາໃສ່ຊື່ຜູ້ໃຊ້ ແລະ ລະຫັດຜ່ານ!', err_user_len: '❌ ຊື່ຜູ້ໃຊ້ຕ້ອງມີ 3-20 ຕົວ!', err_pass_len: '❌ ລະຫັດຜ່ານຕ້ອງມີຢ່າງໜ້ອຍ 4 ຕົວ!', checking: '⏳ ກຳລັງກວດສອບ...', connecting: '⏳ ກຳລັງເຊື່ອມຕໍ່...', creating_account: '⏳ ກຳລັງສ້າງບັນຊີໃໝ່...', err_login_fail: '❌ ເຂົ້າສູ່ລະບົບບໍ່ສຳເລັດ!', err_wrong_pass: '❌ ລະຫັດຜ່ານຜິດ!', err_weak_pass: '❌ ລະຫັດຜ່ານອ່ອນເກີນໄປ!', success_login: '✅ ເຂົ້າສູ່ລະບົບສຳເລັດ!' },
+            my: { login_sub: 'အသုံးပြုသူအမည်နှင့် စကားဝှက်ကို ထည့်ပါ<br>စနစ်သို့ဝင်ရောက်ရန်', username_label: '👤 အသုံးပြုသူအမည်', password_label: '🔑 စကားဝှက်', login_btn: 'ဝင်ရောက်ပါ', err_fill: '❌ အသုံးပြုသူအမည်နှင့် စကားဝှက်ကို ထည့်ပါ!', err_user_len: '❌ အသုံးပြုသူအမည် 3-20 လုံး ရှိရပါမည်!', err_pass_len: '❌ စကားဝှက် အနည်းဆုံး 4 လုံး ရှိရပါမည်!', checking: '⏳ စစ်ဆေးနေသည်...', connecting: '⏳ ချိတ်ဆက်နေသည်...', creating_account: '⏳ အကောင့်အသစ် ဖန်တီးနေသည်...', err_login_fail: '❌ ဝင်ရောက်မှု မအောင်မြင်ပါ!', err_wrong_pass: '❌ စကားဝှက် မှားယွင်းနေသည်!', err_weak_pass: '❌ စကားဝှက် အားနည်းလွန်းသည်!', success_login: '✅ အောင်မြင်စွာ ဝင်ရောက်ပြီးပါပြီ!' },
+            id: { login_sub: 'Masukkan nama pengguna dan kata sandi<br>untuk mengakses sistem', username_label: '👤 Nama Pengguna', password_label: '🔑 Kata Sandi', login_btn: 'Masuk', err_fill: '❌ Masukkan nama pengguna dan kata sandi!', err_user_len: '❌ Nama pengguna harus 3-20 karakter!', err_pass_len: '❌ Kata sandi minimal 4 karakter!', checking: '⏳ Memeriksa...', connecting: '⏳ Menghubungkan...', creating_account: '⏳ Membuat akun baru...', err_login_fail: '❌ Gagal masuk!', err_wrong_pass: '❌ Kata sandi salah!', err_weak_pass: '❌ Kata sandi terlalu lemah!', success_login: '✅ Berhasil masuk!' },
+            ms: { login_sub: 'Masukkan nama pengguna dan kata laluan<br>untuk mengakses sistem', username_label: '👤 Nama Pengguna', password_label: '🔑 Kata Laluan', login_btn: 'Log Masuk', err_fill: '❌ Masukkan nama pengguna dan kata laluan!', err_user_len: '❌ Nama pengguna mestilah 3-20 aksara!', err_pass_len: '❌ Kata laluan mestilah sekurang-kurangnya 4 aksara!', checking: '⏳ Memeriksa...', connecting: '⏳ Menghubungkan...', creating_account: '⏳ Mencipta akaun baharu...', err_login_fail: '❌ Log masuk gagal!', err_wrong_pass: '❌ Kata laluan salah!', err_weak_pass: '❌ Kata laluan terlalu lemah!', success_login: '✅ Log masuk berjaya!' }
+        };
+
+        const SITE_TR = {
+            km: { 
+                nav_home: 'ទំព័រដើម', nav_history: 'ប្រវត្តិ', nav_qr: 'កូដ QR', nav_about: 'អំពី', nav_settings: 'ការកំណត់', 
+                brand_line1: 'ការរចនា និងការអភិវឌ្ឍ', brand_line2: 'ប្រព័ន្ធគ្រប់គ្រងបន្ទប់', brand_line3: 'ឆ្លាតវៃតាមរយៈ', 
+                logout: 'ចាកចេញ', control_room: 'បន្ទប់បញ្ជា', 
+                light_1: 'អំពូលទី១', light_2: 'អំពូលទី២', light_3: 'អំពូលទី៣', light_4: 'អំពូលទី៤', 
+                on: 'បើក', off: 'បិទ', all_on: 'ALL ON', all_off: 'ALL OFF', 
+                esp_connected: 'ESP ភ្ជាប់រួច', esp_disconnected: 'ESP មិនទាន់ភ្ជាប់', 
+                ac_title: 'ម៉ាស៊ីនត្រជាក់', room_temp: 'សីតុណ្ហភាពក្នុងបន្ទប់', 
+                mode_cool: 'ត្រជាក់', mode_heat: 'ក្តៅ', mode_dry: 'ស្ងួត', mode_fan: 'កង្ហារ', mode_auto: 'ស្វ័យប្រវត្តិ',
+                fan_low: 'ទាប', fan_med: 'មធ្យម', fan_high: 'ខ្ពស់', fan_auto: 'ស្វ័យប្រវត្តិ',
+                swing: 'បង្វិល',
+                history_title: 'ប្រវត្តិ', clear_all: 'សម្អាតទាំងអស់', loading: 'កំពុងផ្ទុក...', no_history: 'មិនមានប្រវត្តិទេ', 
+                settings_title: 'ការកំណត់', appearance: 'រូបរាង', font_section: 'អក្សរ', language_section: 'ភាសា', bg_image_section: '🖼️ រូបភាពផ្ទៃខាងក្រោយ', sidebar_section: '📝 ប្ដូរ Sidebar', pair_section: '🔗 Pair Device', add_device_section: '➕ បន្ថែម Device', wifi_section: '📶 កំណត់ WiFi', 
+                choose_lang: 'ជ្រើសរើសភាសា', choose_font_size: 'ទំហំអក្សរ', choose_font: 'ពុម្ពអក្សរទូទៅ', bg_color: 'ពណ៌ផ្ទៃខាងក្រោយ (Body)', dashboard_color: 'ពណ៌ផ្ទៃ Dashboard', accent_color: 'ពណ៌សម្គាល់ (Accent)', text_color: 'ពណ៌អក្សរ', dark_mode: 'របៀបងងឹត (Dark Mode)', bg_url: 'URL រូបភាព', choose_bg: 'ជ្រើសរើសរូបភាព', logo_url: 'Logo URL', choose_logo: 'ជ្រើសរើស Logo', brand_text: 'អត្ថបទ & ពុម្ពអក្សរ', device_name: 'ឈ្មោះ Device', device_id: 'Device ID', pin_code: 'PIN Code', paired: 'Device បាន Pair រួច', pair_btn: 'Pair Device', unpair_btn: 'Unpair', scan_qr_btn: 'Scan QR', reset_settings: 'កំណត់តម្លៃដើម', 
+                qr_title: 'QR Code សម្រាប់ Device', qr_create: 'បង្កើត QR Code', qr_generate: 'បង្កើត', qr_sub: '📱 Scan QR ដើម្បីបង្កើត Device ដោយស្វ័យប្រវត្តិ', qr_scan: 'Scan QR Code', download: 'ទាញយក', open_camera: 'បើកកាមេរ៉ា', close_camera: 'បិទកាមេរ៉ា', 
+                about_title: 'អំពីប្រព័ន្ធ', about_highlight: 'ប្រព័ន្ធគ្រប់គ្រងបន្ទប់ឆ្លាតវៃ', about_desc: ' នេះត្រូវបានរចនាឡើង ដើម្បីគ្រប់គ្រងទាំងអំពូល និងម៉ាស៊ីនត្រជាក់ ពីចម្ងាយ តាមរយៈ ', tech: 'បច្ចេកវិទ្យា:', feat_light: 'គ្រប់គ្រងអំពូល ៤', feat_ac: 'ម៉ាស៊ីនត្រជាក់', feat_history: 'កត់ត្រាប្រវត្តិ', feat_sync: 'សមកាលកម្មពេលវេលា', 
+                scan_wifi: 'Scan WiFi ជុំវិញ', wifi_ssid: 'ឈ្មោះ WiFi (SSID)', password_label_short: 'Password', change_wifi: 'ប្តូរ WiFi', reset_wifi: 'Reset WiFi',
+                wifi_scanning: 'កំពុងស្វែងរក...', wifi_no_result: 'រកមិនឃើញ WiFi', wifi_found_count: 'រកឃើញ'
+            },
+            en: { 
+                nav_home: 'Home', nav_history: 'History', nav_qr: 'QR Code', nav_about: 'About', nav_settings: 'Settings', 
+                brand_line1: 'Design & Development', brand_line2: 'Room Management System', brand_line3: 'Smart via', 
+                logout: 'Logout', control_room: 'Control Room', 
+                light_1: 'Light 1', light_2: 'Light 2', light_3: 'Light 3', light_4: 'Light 4', 
+                on: 'ON', off: 'OFF', all_on: 'ALL ON', all_off: 'ALL OFF', 
+                esp_connected: 'ESP Connected', esp_disconnected: 'ESP Disconnected', 
+                ac_title: 'Air Conditioner', room_temp: 'Room Temperature', 
+                mode_cool: 'Cool', mode_heat: 'Heat', mode_dry: 'Dry', mode_fan: 'Fan', mode_auto: 'Auto',
+                fan_low: 'Low', fan_med: 'Med', fan_high: 'High', fan_auto: 'Auto',
+                swing: 'Swing',
+                history_title: 'History', clear_all: 'Clear All', loading: 'Loading...', no_history: 'No history', 
+                settings_title: 'Settings', appearance: 'Appearance', font_section: 'Typography', language_section: 'Language', bg_image_section: '🖼️ Background Image', sidebar_section: '📝 Customize Sidebar', pair_section: '🔗 Pair Device', add_device_section: '➕ Add Device', wifi_section: '📶 WiFi Settings', 
+                choose_lang: 'Choose Language', choose_font_size: 'Font Size', choose_font: 'Font Family', bg_color: 'Body Background Color', dashboard_color: 'Dashboard Color', accent_color: 'Accent Color', text_color: 'Text Color', dark_mode: 'Dark Mode', bg_url: 'Image URL', choose_bg: 'Choose Image', logo_url: 'Logo URL', choose_logo: 'Choose Logo', brand_text: 'Text & Font', device_name: 'Device Name', device_id: 'Device ID', pin_code: 'PIN Code', paired: 'Device Paired', pair_btn: 'Pair Device', unpair_btn: 'Unpair', scan_qr_btn: 'Scan QR', reset_settings: 'Reset Settings', 
+                qr_title: 'QR Code for Device', qr_create: 'Create QR Code', qr_generate: 'Generate', qr_sub: '📱 Scan QR to create Device automatically', qr_scan: 'Scan QR Code', download: 'Download', open_camera: 'Open Camera', close_camera: 'Close Camera', 
+                about_title: 'About System', about_highlight: 'Smart Room Management System', about_desc: ' designed to control both lights and AC remotely via ', tech: 'Technology:', feat_light: 'Control 4 Lights', feat_ac: 'Air Conditioner', feat_history: 'History Log', feat_sync: 'Time Sync', 
+                scan_wifi: 'Scan WiFi', wifi_ssid: 'WiFi Name (SSID)', password_label_short: 'Password', change_wifi: 'Change WiFi', reset_wifi: 'Reset WiFi',
+                wifi_scanning: 'Scanning...', wifi_no_result: 'No WiFi found', wifi_found_count: 'Found'
+            }
+        };
+
+        let loginLang = 'km';
+        let siteLang = 'km';
+
+        function tLogin(key) { return (LOGIN_TR[loginLang] && LOGIN_TR[loginLang][key]) || (LOGIN_TR.km && LOGIN_TR.km[key]) || key; }
+        function tSite(key) { return (SITE_TR[siteLang] && SITE_TR[siteLang][key]) || (SITE_TR.km && SITE_TR.km[key]) || key; }
+
+        function applyLoginLanguage(langCode) {
+            loginLang = langCode;
+            localStorage.setItem('login_language', langCode);
+            document.querySelectorAll('#loginOverlay [data-login-i18n]').forEach(el => {
+                const key = el.getAttribute('data-login-i18n');
+                if (LOGIN_TR[langCode] && LOGIN_TR[langCode][key]) { el.innerHTML = LOGIN_TR[langCode][key]; }
+                else if (LOGIN_TR.km[key]) { el.innerHTML = LOGIN_TR.km[key]; }
+            });
+        }
+
+        function applySiteLanguage(langCode) {
+            siteLang = langCode;
+            localStorage.setItem('site_language', langCode);
+            document.querySelectorAll('[data-site-i18n]').forEach(el => {
+                if (el.closest('#loginOverlay')) return;
+                const key = el.getAttribute('data-site-i18n');
+                if (SITE_TR[langCode] && SITE_TR[langCode][key]) { el.textContent = SITE_TR[langCode][key]; }
+                else if (SITE_TR.km[key]) { el.textContent = SITE_TR.km[key]; }
+            });
+            document.querySelectorAll('.light-card').forEach(card => {
+                const badge = card.querySelector('.status-badge');
+                if (badge) badge.textContent = card.classList.contains('on') ? tSite('on') : tSite('off');
+            });
+            const acModeLabel = document.getElementById('acModeLabel');
+            if (acModeLabel) {
+                const map = { cool: tSite('mode_cool'), heat: tSite('mode_heat'), dry: tSite('mode_dry'), fan: tSite('mode_fan'), auto: tSite('mode_auto') };
+                acModeLabel.textContent = map[acModeLabel.dataset.mode || 'cool'];
+            }
+            const espText = document.getElementById('espStatusText');
+            if (espText) {
+                const fbStatus = document.getElementById('fbStatus');
+                const isOnline = fbStatus && fbStatus.innerHTML.includes('#2ecc71');
+                espText.textContent = isOnline ? tSite('esp_connected') : tSite('esp_disconnected');
+            }
+        }
+
+        function showToast(text, type = 'success') {
+            const toast = document.getElementById('toastNotif');
+            const toastText = document.getElementById('toastText');
+            const icon = toast.querySelector('i');
+            toastText.textContent = text;
+            if (type === 'success') { toast.style.background = 'linear-gradient(135deg, #1a7a3e, #2ecc71)'; toast.style.boxShadow = '0 15px 35px rgba(0, 0, 0, 0.5), 0 0 25px rgba(46, 204, 113, 0.5)'; icon.className = 'fas fa-check-circle'; }
+            else if (type === 'error') { toast.style.background = 'linear-gradient(135deg, #7a1a28, #e74c3c)'; toast.style.boxShadow = '0 15px 35px rgba(0, 0, 0, 0.5), 0 0 25px rgba(231, 76, 60, 0.5)'; icon.className = 'fas fa-exclamation-circle'; }
+            else { toast.style.background = 'linear-gradient(135deg, #b8730e, #f39c12)'; toast.style.boxShadow = '0 15px 35px rgba(0, 0, 0, 0.5), 0 0 25px rgba(243, 156, 18, 0.5)'; icon.className = 'fas fa-info-circle'; }
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function addRippleEffect() {
+            document.querySelectorAll('.ripple-container').forEach(el => {
+                if (el.dataset.rippleAttached === 'true') return;
+                el.dataset.rippleAttached = 'true';
+                el.addEventListener('click', function(e) {
+                    const rect = this.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    const ripple = document.createElement('span');
+                    ripple.className = 'ripple';
+                    const size = Math.max(rect.width, rect.height);
+                    ripple.style.width = ripple.style.height = size + 'px';
+                    ripple.style.left = (x - size / 2) + 'px';
+                    ripple.style.top = (y - size / 2) + 'px';
+                    this.appendChild(ripple);
+                    setTimeout(() => ripple.remove(), 700);
+                });
+            });
+        }
+
+        const savedLoginLang = localStorage.getItem('login_language') || 'km';
+        document.getElementById('loginLangSelect').value = savedLoginLang;
+        applyLoginLanguage(savedLoginLang);
+
+        document.getElementById('loginLangSelect').addEventListener('change', function() {
+            applyLoginLanguage(this.value);
+            showToast('✓ ' + this.value.toUpperCase(), 'success');
+        });
+
+        let CURRENT_USER_ID = null;
+        let CURRENT_USERNAME = '';
+        let BASE_PATH = '';
+        let currentDeviceId = null;
+        let latestRfData = null;
+        let espHeartbeatTimer = null;
+        let wifiScanListener = null;
+        let html5QrCode = null;
+        let isScanning = false;
+        let appInitialized = false;
+        let pairingResponseListener = null;
+        let pairQrScanner = null;
+        let pairQrScanning = false;
+        let isPairingMode = false;
+
+        const loginOverlay = document.getElementById('loginOverlay');
+        const mainContent = document.getElementById('mainContent');
+        const loginStatus = document.getElementById('loginStatus');
+        const overlayEmail = document.getElementById('overlayEmail');
+        const overlayPassword = document.getElementById('overlayPassword');
+        const eyeIcon = document.getElementById('eyeIcon');
+        const loggedUserEmail = document.getElementById('loggedUserEmail');
+
+        const RF_CODE_MAP = {
+            "01": { on: 8181, off: 8282 },
+            "02": { on: 8383, off: 8484 },
+            "03": { on: 8585, off: 8686 },
+            "04": { on: 8787, off: 8888 },
+            "05": { on: 8989, off: 9090 },
+            "06": { on: 9191, off: 9292 },
+            "07": { on: 9393, off: 9494 },
+            "08": { on: 9595, off: 9696 },
+            "09": { on: 9797, off: 9898 },
+            "10": { on: 9999, off: 10100 },
+            "11": { on: 10101, off: 10202 },
+            "12": { on: 10303, off: 10404 },
+            "13": { on: 10505, off: 10606 },
+            "14": { on: 10707, off: 10808 },
+            "15": { on: 10909, off: 11010 },
+            "16": { on: 11111, off: 11212 },
+            "17": { on: 11313, off: 11414 },
+            "18": { on: 11515, off: 11616 },
+            "19": { on: 11717, off: 11818 },
+            "20": { on: 11919, off: 12020 },
+            "21": { on: 12121, off: 12222 },
+            "22": { on: 12323, off: 12424 },
+            "23": { on: 12525, off: 12626 },
+            "24": { on: 12727, off: 12828 },
+            "25": { on: 12929, off: 13030 },
+            "26": { on: 13131, off: 13232 },
+            "27": { on: 13333, off: 13434 },
+            "28": { on: 13535, off: 13636 },
+            "29": { on: 13737, off: 13838 },
+            "30": { on: 13939, off: 14040 }
+        };
+
+        document.getElementById('togglePasswordBtn').addEventListener('click', function() {
+            if (overlayPassword.type === 'password') { overlayPassword.type = 'text'; eyeIcon.className = 'fas fa-eye-slash'; }
+            else { overlayPassword.type = 'password'; eyeIcon.className = 'fas fa-eye'; }
+        });
+
+        document.getElementById('loginBtn').addEventListener('click', handleLogin);
+        overlayEmail.addEventListener('keypress', (e) => { if (e.key === 'Enter') overlayPassword.focus(); });
+        overlayPassword.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleLogin(); });
+
+        async function handleLogin() {
+            const username = overlayEmail.value.trim().toLowerCase();
+            const password = overlayPassword.value;
+            const btn = document.getElementById('loginBtn');
+            if (!username || !password) { loginStatus.textContent = tLogin('err_fill'); loginStatus.className = 'login-status error'; return; }
+            if (!/^[a-z0-9_]{3,20}$/.test(username)) { loginStatus.textContent = tLogin('err_user_len'); loginStatus.className = 'login-status error'; return; }
+            if (password.length < 4) { loginStatus.textContent = tLogin('err_pass_len'); loginStatus.className = 'login-status error'; return; }
+            const fakeEmail = username + '@smarthome.local';
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ${tLogin('checking')}`;
+            loginStatus.textContent = tLogin('connecting');
+            loginStatus.className = 'login-status loading';
+            try {
+                await firebase.auth().signInWithEmailAndPassword(fakeEmail, password);
+                onLoginSuccess(username, 'login');
+            } catch (error) {
+                const tryRegister = ['auth/user-not-found', 'auth/invalid-credential', 'auth/invalid-login-credentials'].includes(error.code);
+                if (tryRegister) {
+                    loginStatus.textContent = tLogin('creating_account');
+                    try {
+                        await firebase.auth().createUserWithEmailAndPassword(fakeEmail, password);
+                        onLoginSuccess(username, 'register');
+                    } catch (regError) {
+                        let msg = tLogin('err_login_fail');
+                        if (regError.code === 'auth/email-already-in-use') msg = tLogin('err_wrong_pass');
+                        else if (regError.code === 'auth/weak-password') msg = tLogin('err_weak_pass');
+                        loginStatus.textContent = msg;
+                        loginStatus.className = 'login-status error';
+                        btn.disabled = false;
+                        btn.innerHTML = `<i class="fas fa-sign-in-alt"></i> ${tLogin('login_btn')}`;
+                    }
+                } else {
+                    loginStatus.textContent = '❌ ' + error.message;
+                    loginStatus.className = 'login-status error';
+                    btn.disabled = false;
+                    btn.innerHTML = `<i class="fas fa-sign-in-alt"></i> ${tLogin('login_btn')}`;
+                }
+            }
+        }
+
+        function onLoginSuccess(username, mode) {
+            const user = firebase.auth().currentUser;
+            CURRENT_USER_ID = user ? user.uid : 'unknown';
+            CURRENT_USERNAME = username;
+            BASE_PATH = 'users/' + CURRENT_USER_ID;
+            loginStatus.textContent = tLogin('success_login');
+            loginStatus.className = 'login-status success';
+            loggedUserEmail.textContent = username;
+            setTimeout(() => {
+                loginOverlay.classList.add('hidden');
+                mainContent.style.display = 'flex';
+                initApp();
+                setTimeout(() => loadPairedDevice(), 1500);
+                showToast('Welcome ' + username + '!', 'success');
+            }, 800);
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            if (!confirm('តើអ្នកចង់ចាកចេញមែនទេ?')) return;
+            firebase.auth().signOut().then(() => { localStorage.removeItem('site_language'); location.reload(); });
+        });
+
+        firebase.auth().onAuthStateChanged((user) => {
+            if (user && user.email) {
+                const username = user.email.split('@')[0];
+                CURRENT_USER_ID = user.uid;
+                CURRENT_USERNAME = username;
+                BASE_PATH = 'users/' + CURRENT_USER_ID;
+                loggedUserEmail.textContent = username;
+                loginOverlay.classList.add('hidden');
+                mainContent.style.display = 'flex';
+                if (!appInitialized) {
+                    initApp();
+                    setTimeout(() => loadPairedDevice(), 1500);
+                }
+            }
+        });
+
+        function initApp() {
+            if (appInitialized) return;
+            appInitialized = true;
+            addRippleEffect();
+
+            function saveSetting(key, value) {
+                let s = JSON.parse(localStorage.getItem('iot_settings') || '{}');
+                s[key] = value;
+                localStorage.setItem('iot_settings', JSON.stringify(s));
+            }
+
+            const def = {
+                bgColor: '#0b1a2e', dashboardColor: 'rgba(255,255,255,0.05)',
+                accentColor: '#6bc7ff', textColor: '#f0f6ff', lang: 'km',
+                fontSize: '16px', fontFamily: "'Kantumruy Pro', 'Segoe UI', 'Khmer OS', system-ui, sans-serif",
+                sidebarFontFamily: "'Kantumruy Pro', 'Segoe UI', 'Khmer OS', system-ui, sans-serif",
+                sidebarLogo: '', brandLine1: 'ការរចនា និងការអភិវឌ្ឍ',
+                brandLine2: 'ប្រព័ន្ធគ្រប់គ្រងបន្ទប់', brandLine3: 'ឆ្លាតវៃតាមរយៈ', bgImageUrl: ''
+            };
+            let s = JSON.parse(localStorage.getItem('iot_settings') || '{}');
+            s = { ...def, ...s };
+
+            if (s.bgColor) { document.documentElement.style.setProperty('--bg-body', s.bgColor); document.getElementById('bgColor').value = s.bgColor; if (!s.bgImageUrl) document.body.style.backgroundColor = s.bgColor; }
+            if (s.dashboardColor) { document.documentElement.style.setProperty('--bg-dashboard', s.dashboardColor); document.getElementById('dashboard').style.background = s.dashboardColor; document.getElementById('dashboardColor').value = s.dashboardColor; }
+            if (s.accentColor) { document.documentElement.style.setProperty('--accent-color', s.accentColor); document.getElementById('accentColor').value = s.accentColor; }
+            if (s.textColor) { document.documentElement.style.setProperty('--text-primary', s.textColor); document.getElementById('textColor').value = s.textColor; }
+            if (s.fontSize) { document.documentElement.style.setProperty('--font-size-base', s.fontSize); document.getElementById('fontSize').value = s.fontSize; }
+            if (s.fontFamily) { document.documentElement.style.setProperty('--font-family-base', s.fontFamily); document.getElementById('fontFamily').value = s.fontFamily; }
+            if (s.bgImageUrl) { document.getElementById('bgImageUrl').value = s.bgImageUrl; document.body.style.backgroundImage = `url('${s.bgImageUrl}')`; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; document.body.style.backgroundAttachment = 'fixed'; }
+            if (s.sidebarLogo) { document.getElementById('brandIcon').innerHTML = `<img src="${s.sidebarLogo}" alt="Logo" />`; document.getElementById('sidebarLogo').value = s.sidebarLogo; }
+            if (s.brandLine1) { document.getElementById('brandLine1').textContent = s.brandLine1; document.getElementById('brandLine1Input').value = s.brandLine1; }
+            if (s.brandLine2) { document.getElementById('brandLine2').textContent = s.brandLine2; document.getElementById('brandLine2Input').value = s.brandLine2; }
+            if (s.brandLine3 !== undefined) { document.getElementById('brandLine3Text').textContent = s.brandLine3; document.getElementById('brandLine3Input').value = s.brandLine3; document.getElementById('brandIoTTag').style.display = (s.brandLine3.trim() === '') ? 'none' : 'inline'; }
+            if (s.sidebarFontFamily) { document.documentElement.style.setProperty('--sidebar-font-family', s.sidebarFontFamily); document.getElementById('sidebar').style.fontFamily = s.sidebarFontFamily; document.getElementById('sidebarFontFamily').value = s.sidebarFontFamily; }
+
+            const savedSiteLang = localStorage.getItem('site_language') || s.lang || 'km';
+            document.getElementById('langSelect').value = savedSiteLang;
+            applySiteLanguage(savedSiteLang);
+
+            document.getElementById('bgColor').addEventListener('input', function() { document.documentElement.style.setProperty('--bg-body', this.value); document.body.style.backgroundColor = this.value; saveSetting('bgColor', this.value); });
+            document.getElementById('dashboardColor').addEventListener('input', function() { document.documentElement.style.setProperty('--bg-dashboard', this.value); document.getElementById('dashboard').style.background = this.value; saveSetting('dashboardColor', this.value); });
+            document.getElementById('accentColor').addEventListener('input', function() { document.documentElement.style.setProperty('--accent-color', this.value); saveSetting('accentColor', this.value); });
+            document.getElementById('textColor').addEventListener('input', function() { document.documentElement.style.setProperty('--text-primary', this.value); saveSetting('textColor', this.value); });
+            document.getElementById('fontSize').addEventListener('change', function() { document.documentElement.style.setProperty('--font-size-base', this.value); saveSetting('fontSize', this.value); });
+            document.getElementById('fontFamily').addEventListener('change', function() { document.documentElement.style.setProperty('--font-family-base', this.value); saveSetting('fontFamily', this.value); });
+            document.getElementById('langSelect').addEventListener('change', function() { saveSetting('lang', this.value); applySiteLanguage(this.value); showToast('✓ Language: ' + this.value.toUpperCase(), 'success'); });
+            document.getElementById('darkModeToggle').addEventListener('click', function() {
+                this.classList.toggle('active');
+                const isDark = this.classList.contains('active');
+                const s2 = JSON.parse(localStorage.getItem('iot_settings') || '{}');
+                if (isDark) { document.documentElement.style.setProperty('--bg-body', '#0a0a0a'); if (!s2.bgImageUrl) document.body.style.backgroundColor = '#0a0a0a'; }
+                else { const bg = s2.bgColor || '#0b1a2e'; document.documentElement.style.setProperty('--bg-body', bg); if (!s2.bgImageUrl) document.body.style.backgroundColor = bg; }
+                saveSetting('darkMode', isDark);
+            });
+            document.getElementById('bgImageApplyBtn').addEventListener('click', function() {
+                const url = document.getElementById('bgImageUrl').value.trim();
+                if (url) { document.body.style.backgroundImage = `url('${url}')`; document.body.style.backgroundSize = 'cover'; document.body.style.backgroundPosition = 'center'; document.body.style.backgroundAttachment = 'fixed'; saveSetting('bgImageUrl', url); showToast('✓ Background changed', 'success'); }
+                else { document.body.style.backgroundImage = 'none'; saveSetting('bgImageUrl', ''); }
+            });
+            document.querySelectorAll('#bgPresets img').forEach(img => {
+                img.addEventListener('click', function() {
+                    const url = this.dataset.url;
+                    document.getElementById('bgImageUrl').value = url;
+                    document.querySelectorAll('#bgPresets img').forEach(x => x.classList.remove('active'));
+                    this.classList.add('active');
+                    document.body.style.backgroundImage = `url('${url}')`;
+                    document.body.style.backgroundSize = 'cover';
+                    document.body.style.backgroundPosition = 'center';
+                    document.body.style.backgroundAttachment = 'fixed';
+                    saveSetting('bgImageUrl', url);
+                });
+            });
+            document.getElementById('logoApplyBtn').addEventListener('click', function() {
+                const url = document.getElementById('sidebarLogo').value.trim();
+                if (url) { document.getElementById('brandIcon').innerHTML = `<img src="${url}" alt="Logo" />`; saveSetting('sidebarLogo', url); }
+            });
+            document.querySelectorAll('#logoPresets img').forEach(img => {
+                img.addEventListener('click', function() {
+                    const url = this.dataset.url;
+                    document.getElementById('sidebarLogo').value = url;
+                    document.querySelectorAll('#logoPresets img').forEach(x => x.classList.remove('active'));
+                    this.classList.add('active');
+                    document.getElementById('brandIcon').innerHTML = `<img src="${url}" alt="Logo" />`;
+                    saveSetting('sidebarLogo', url);
+                });
+            });
+            document.getElementById('sidebarApplyBtn').addEventListener('click', function() {
+                const l1 = document.getElementById('brandLine1Input').value.trim();
+                const l2 = document.getElementById('brandLine2Input').value.trim();
+                const l3 = document.getElementById('brandLine3Input').value.trim();
+                const font = document.getElementById('sidebarFontFamily').value;
+                document.getElementById('brandLine1').textContent = l1;
+                document.getElementById('brandLine2').textContent = l2;
+                document.getElementById('brandLine3Text').textContent = l3;
+                const iotTag = document.getElementById('brandIoTTag');
+                iotTag.style.display = (l3 === '') ? 'none' : 'inline';
+                document.documentElement.style.setProperty('--sidebar-font-family', font);
+                document.getElementById('sidebar').style.fontFamily = font;
+                saveSetting('brandLine1', l1); saveSetting('brandLine2', l2); saveSetting('brandLine3', l3); saveSetting('sidebarFontFamily', font);
+                showToast('✓ Sidebar updated', 'success');
+            });
+            document.getElementById('resetSettingsBtn').addEventListener('click', function() {
+                if (!confirm('Reset settings?')) return;
+                localStorage.removeItem('iot_settings');
+                location.reload();
+            });
+
+            document.getElementById('pairDeviceBtn').addEventListener('click', pairDevice);
+            document.getElementById('unpairDeviceBtn').addEventListener('click', unpairDevice);
+            document.getElementById('scanPairQrBtn').addEventListener('click', togglePairQrScanner);
+
+            document.getElementById('wifiScanCloseBtn').addEventListener('click', function() {
+                const listEl = document.getElementById('wifiScanList');
+                listEl.style.display = 'none';
+                document.getElementById('wifiScanItems').innerHTML = '';
+                if (wifiScanListener) {
+                    db.ref('wifi/scanDone').off('value', wifiScanListener);
+                    wifiScanListener = null;
+                }
+                showToast('✓ បិទ Scan WiFi', 'info');
+            });
+
+            // LIGHTS
+            const lightRefs = {
+                1: db.ref(`${BASE_PATH}/statusLED`), 2: db.ref(`${BASE_PATH}/statusLED1`),
+                3: db.ref(`${BASE_PATH}/statusLED2`), 4: db.ref(`${BASE_PATH}/statusLED3`)
+            };
+            const statusMap = {
+                1: document.getElementById('statusLED'), 2: document.getElementById('statusLED1'),
+                3: document.getElementById('statusLED2'), 4: document.getElementById('statusLED3')
+            };
+            const cards = document.querySelectorAll('.light-card');
+
+            function setLightUI(card, on) {
+                if (on) { card.classList.remove('off'); card.classList.add('on'); if (statusMap[card.dataset.light]) statusMap[card.dataset.light].textContent = tSite('on'); }
+                else { card.classList.remove('on'); card.classList.add('off'); if (statusMap[card.dataset.light]) statusMap[card.dataset.light].textContent = tSite('off'); }
+            }
+
+            function logEvent(device, action, details = '') {
+                db.ref(`${BASE_PATH}/history`).push({ device, action, details, timestamp: firebase.database.ServerValue.TIMESTAMP }).catch(err => console.warn(err));
+            }
+
+            cards.forEach(c => c.addEventListener('click', function() {
+                const newState = !this.classList.contains('on');
+                setLightUI(this, newState);
+                const n = parseInt(this.dataset.light);
+                if (lightRefs[n]) lightRefs[n].set(newState);
+                logEvent(`Light ${n}`, newState ? 'ON' : 'OFF');
+                showToast(`${tSite('light_'+n)} ${newState ? tSite('on') + ' 💡' : tSite('off')}`, newState ? 'success' : 'info');
+            }));
+
+            document.getElementById('allOnBtn').addEventListener('click', () => {
+                cards.forEach(c => { setLightUI(c, true); const n = parseInt(c.dataset.light); if (lightRefs[n]) lightRefs[n].set(true); });
+                showToast(tSite('all_on') + ' 💡', 'success');
+            });
+            document.getElementById('allOffBtn').addEventListener('click', () => {
+                cards.forEach(c => { setLightUI(c, false); const n = parseInt(c.dataset.light); if (lightRefs[n]) lightRefs[n].set(false); });
+                showToast(tSite('all_off'), 'info');
+            });
+
+            Object.keys(lightRefs).forEach(num => {
+                lightRefs[num].on('value', snap => {
+                    const card = document.querySelector(`.light-card[data-light="${num}"]`);
+                    if (card) setLightUI(card, snap.val() === true);
+                });
+            });
+
+            // AC
+            const acRef = db.ref(`${BASE_PATH}/ac`);
+            const acPowerBtn = document.getElementById('acPowerBtn');
+            const acSetTemp = document.getElementById('acSetTemp');
+            const acRoomTemp = document.getElementById('acRoomTemp');
+            const acModeLabel = document.getElementById('acModeLabel');
+            const acModeBtns = document.querySelectorAll('.ac-mode-btn');
+            const acFanBtns = document.querySelectorAll('.ac-fan-btn');
+            const acSwingBtn = document.getElementById('acSwingBtn');
+
+            acPowerBtn.addEventListener('click', function() {
+                const on = !this.classList.contains('on');
+                acRef.update({ power: on });
+                logEvent('AC', on ? 'ON' : 'OFF');
+                showToast(`${tSite('ac_title')} ${on ? tSite('on') + ' ❄️' : tSite('off')}`, on ? 'success' : 'info');
+            });
+            acModeBtns.forEach(b => b.addEventListener('click', function() {
+                acRef.update({ mode: this.dataset.mode });
+                const modes = { cool: tSite('mode_cool') + ' ❄️', heat: tSite('mode_heat') + ' ☀️', dry: tSite('mode_dry') + ' 💧', fan: tSite('mode_fan') + ' 🌬️', auto: tSite('mode_auto') + ' 🤖' };
+                showToast('Mode: ' + modes[this.dataset.mode], 'info');
+            }));
+            acFanBtns.forEach(b => b.addEventListener('click', function() {
+                acRef.update({ fanSpeed: this.dataset.speed });
+                const fanMap = { low: tSite('fan_low'), med: tSite('fan_med'), high: tSite('fan_high'), auto: tSite('fan_auto') };
+                showToast('Fan: ' + fanMap[this.dataset.speed], 'info');
+            }));
+            acSwingBtn.addEventListener('click', function() { acRef.update({ swing: !this.classList.contains('active') }); });
+            document.getElementById('acTempUp').addEventListener('click', () => {
+                let t = Math.min(30, (parseInt(acSetTemp.textContent) || 24) + 1);
+                acRef.update({ temp: t });
+                showToast('🌡️ ' + t + '°C', 'info');
+            });
+            document.getElementById('acTempDown').addEventListener('click', () => {
+                let t = Math.max(16, (parseInt(acSetTemp.textContent) || 24) - 1);
+                acRef.update({ temp: t });
+                showToast('🌡️ ' + t + '°C', 'info');
+            });
+
+            acRef.on('value', snap => {
+                const d = snap.val();
+                if (!d) return;
+                if (d.power !== undefined) acPowerBtn.classList.toggle('on', d.power);
+                if (d.temp !== undefined) acSetTemp.textContent = d.temp;
+                if (d.roomTemp !== undefined) acRoomTemp.textContent = d.roomTemp;
+                if (d.mode) {
+                    acModeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === d.mode));
+                    const map = { cool: tSite('mode_cool'), heat: tSite('mode_heat'), dry: tSite('mode_dry'), fan: tSite('mode_fan'), auto: tSite('mode_auto') };
+                    acModeLabel.textContent = map[d.mode] || d.mode;
+                    acModeLabel.dataset.mode = d.mode;
+                }
+                if (d.fanSpeed) acFanBtns.forEach(b => b.classList.toggle('active', b.dataset.speed === d.fanSpeed));
+                if (d.swing !== undefined) {
+                    acSwingBtn.classList.toggle('active', d.swing);
+                    const swingText = d.swing ? `${tSite('swing')} ON` : tSite('swing');
+                    acSwingBtn.innerHTML = `<i class="fas fa-arrows-alt-v"></i> <span data-site-i18n="swing">${swingText}</span>`;
+                }
+            });
+            acRef.once('value').then(snap => {
+                if (!snap.exists()) acRef.set({ power: false, mode: 'cool', temp: 24, fanSpeed: 'auto', swing: false, roomTemp: 27 });
+            });
+
+            // ⭐⭐⭐ RF Devices ⭐⭐⭐
+            function renderRfDevices(data) {
+                const container = document.getElementById('rfDevicesContainer');
+                container.innerHTML = '';
+                if (!data) return;
+                Object.keys(data).forEach(id => {
+                    const d = data[id];
+                    const isOn = d.state === true;
+                    const card = document.createElement('div');
+                    card.className = 'rf-card';
+                    card.innerHTML = `
+                        <div class="rf-header">
+                            <span class="rf-name">${d.name || 'Device ' + id}</span>
+                            <div class="rf-header-actions">
+                                <span class="rf-badge ${isOn ? 'on' : 'off'}">${isOn ? tSite('on') : tSite('off')}</span>
+                                <button class="btn-delete" data-delete="${id}"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <div class="rf-actions">
+                            <button class="btn-on ripple-container ${isOn ? 'active' : ''}" data-rf-on="${id}">ON</button>
+                            <button class="btn-off ripple-container ${!isOn ? 'active' : ''}" data-rf-off="${id}">OFF</button>
+                        </div>`;
+                    container.appendChild(card);
+                });
+                addRippleEffect();
+                container.querySelectorAll('[data-rf-on]').forEach(b => {
+                    b.addEventListener('click', () => {
+                        const card = b.closest('.rf-card');
+                        card.querySelector('.btn-on').classList.add('active');
+                        card.querySelector('.btn-off').classList.remove('active');
+                        card.querySelector('.rf-badge').textContent = tSite('on');
+                        card.querySelector('.rf-badge').classList.remove('off');
+                        card.querySelector('.rf-badge').classList.add('on');
+                        db.ref(`${BASE_PATH}/RF/${b.dataset.rfOn}`).update({ state: true });
+                        logEvent(`RF ${b.dataset.rfOn}`, 'ON');
+                        showToast('✅ ' + tSite('on'), 'success');
+                    });
+                });
+                container.querySelectorAll('[data-rf-off]').forEach(b => {
+                    b.addEventListener('click', () => {
+                        const card = b.closest('.rf-card');
+                        card.querySelector('.btn-off').classList.add('active');
+                        card.querySelector('.btn-on').classList.remove('active');
+                        card.querySelector('.rf-badge').textContent = tSite('off');
+                        card.querySelector('.rf-badge').classList.remove('on');
+                        card.querySelector('.rf-badge').classList.add('off');
+                        db.ref(`${BASE_PATH}/RF/${b.dataset.rfOff}`).update({ state: false });
+                        logEvent(`RF ${b.dataset.rfOff}`, 'OFF');
+                        showToast(tSite('off'), 'info');
+                    });
+                });
+                container.querySelectorAll('[data-delete]').forEach(b => {
+                    b.addEventListener('click', () => { if (confirm('Delete this device?')) db.ref(`${BASE_PATH}/RF/${b.dataset.delete}`).remove(); });
+                });
+            }
+
+            db.ref(`${BASE_PATH}/RF`).on('value', snap => renderRfDevices(snap.val()));
+
+            // ADD DEVICE
+            document.getElementById('addDeviceBtn').addEventListener('click', function() {
+                const nameInput = document.getElementById('newDeviceName');
+                const idInput = document.getElementById('newDeviceId');
+                const name = nameInput.value.trim();
+                const id = idInput.value.trim();
+                if (!name || !id) { alert('Please fill in name and ID!'); return; }
+                if (!/^[0-9]{1,2}$/.test(id)) { alert('ID must be a number 01-30!'); return; }
+                const idPadded = id.padStart(2, '0');
+                if (!RF_CODE_MAP[idPadded]) {
+                    alert('❌ ID ' + idPadded + ' គ្មានក្នុង RF_CODE_MAP!\n\nសូមប្រើ ID ពី 01 ដល់ 30 ប៉ុណ្ណោះ');
+                    return;
+                }
+                const codes = RF_CODE_MAP[idPadded] || { on: 0, off: 0 };
+                db.ref(`${BASE_PATH}/RF/${idPadded}`).set({ name: name, state: false, onCode: codes.on, offCode: codes.off }).then(() => {
+                    showToast(`✅ ${name} (ID: ${idPadded})`, 'success');
+                    nameInput.value = '';
+                    idInput.value = '';
+                    window.switchView('home');
+                }).catch(err => alert('Error: ' + err.message));
+            });
+
+            // WiFi
+            document.getElementById('updateWifiBtn').addEventListener('click', function() {
+                const ssid = document.getElementById('wifiSSID').value.trim();
+                const password = document.getElementById('wifiPassword').value.trim();
+                if (!ssid) { alert('Please enter WiFi SSID!'); return; }
+                if (!confirm(`Change WiFi to "${ssid}"?`)) return;
+                document.getElementById('wifiStatus').textContent = '⏳ Sending...';
+                db.ref('wifi').update({ ssid, password, action: "change", timestamp: Date.now() }).then(() => {
+                    document.getElementById('wifiStatus').textContent = '✅ Sent!';
+                    document.getElementById('wifiStatus').style.color = '#2ecc71';
+                    document.getElementById('wifiSSID').value = '';
+                    document.getElementById('wifiPassword').value = '';
+                });
+            });
+            document.getElementById('resetWifiBtn').addEventListener('click', function() {
+                if (!confirm('⚠️ Reset WiFi?')) return;
+                db.ref('wifi').update({ resetRequest: true, timestamp: Date.now() });
+            });
+            document.getElementById('startWifiScanBtn').addEventListener('click', function() {
+                const listEl = document.getElementById('wifiScanList');
+                const itemsEl = document.getElementById('wifiScanItems');
+                const countEl = document.getElementById('wifiScanCount');
+                listEl.style.display = 'block';
+                itemsEl.innerHTML = `<div class="wifi-scan-loading"><i class="fas fa-spinner fa-spin"></i> ${tSite('loading')}</div>`;
+                countEl.textContent = tSite('wifi_scanning');
+                db.ref('wifi/scanResults').remove();
+                db.ref('wifi/scanDone').set(false);
+                setTimeout(() => db.ref('wifi/scanRequest').set(true), 300);
+                if (wifiScanListener) db.ref('wifi/scanDone').off('value', wifiScanListener);
+                wifiScanListener = db.ref('wifi/scanDone').on('value', snap => {
+                    if (snap.val() === true) {
+                        db.ref('wifi/scanResults').once('value').then(rs => {
+                            const data = rs.val();
+                            if (!data) { 
+                                itemsEl.innerHTML = `<div class="wifi-scan-loading">❌ ${tSite('wifi_no_result')}</div>`; 
+                                countEl.textContent = tSite('wifi_no_result'); 
+                                return; 
+                            }
+                            const arr = Array.isArray(data) ? data : Object.values(data);
+                            arr.sort((a, b) => (b.rssi || 0) - (a.rssi || 0));
+                            countEl.textContent = `${tSite('wifi_found_count')} ${arr.length} WiFi`;
+                            let html = '';
+                            arr.forEach(w => {
+                                if (!w || !w.ssid) return;
+                                const lock = w.encryption !== 0 ? '<i class="fas fa-lock" style="color: #f39c12;"></i>' : '<i class="fas fa-lock-open" style="color: #2ecc71;"></i>';
+                                const safeSSID = (w.ssid || '').replace(/'/g, "\\'");
+                                html += `<div class="wifi-scan-item" data-ssid="${safeSSID}" data-lock="${w.encryption !== 0}">
+                                    <div class="wifi-lock">${lock}</div>
+                                    <div class="wifi-info"><div class="wifi-name">${w.ssid}</div><div class="wifi-detail">Ch: ${w.channel || '?'}</div></div>
+                                    <div class="wifi-signal">${w.rssi} dBm</div>
+                                </div>`;
+                            });
+                            itemsEl.innerHTML = html || `<div class="wifi-scan-loading">❌ ${tSite('wifi_no_result')}</div>`;
+                            itemsEl.querySelectorAll('.wifi-scan-item').forEach(item => {
+                                item.addEventListener('click', function() {
+                                    const ssid = this.dataset.ssid;
+                                    const locked = this.dataset.lock === 'true';
+                                    let pwd = '';
+                                    if (locked) { pwd = prompt(`🔒 Password for ${ssid}:`, ''); if (!pwd) return; }
+                                    document.getElementById('wifiSSID').value = ssid;
+                                    document.getElementById('wifiPassword').value = pwd;
+                                    showToast('✓ ' + ssid, 'success');
+                                });
+                            });
+                        });
+                        setTimeout(() => db.ref('wifi/scanDone').set(false), 2000);
+                    }
+                });
+            });
+
+            // QR
+            document.getElementById('generateQrBtn').addEventListener('click', function() {
+                const name = document.getElementById('qrDeviceName').value.trim();
+                const id = document.getElementById('qrDeviceId').value.trim();
+                if (!name || !id) { alert('Please fill in fields!'); return; }
+                const qrUrl = `${WEBSITE_URL}?add=1&id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`;
+                const imgUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrUrl)}`;
+                document.getElementById('qrImage').src = imgUrl;
+                document.getElementById('downloadQrBtn').href = imgUrl;
+                document.getElementById('qrCodeInfo').textContent = `${name} (ID: ${id})`;
+                document.getElementById('qrCodeDisplay').style.display = 'block';
+            });
+
+            document.getElementById('qrCloseBtn').addEventListener('click', function() {
+                document.getElementById('qrCodeDisplay').style.display = 'none';
+            });
+
+            document.getElementById('startScanBtn').addEventListener('click', function() {
+                if (isScanning) return;
+                if (typeof Html5Qrcode === 'undefined') { alert('Library not loaded!'); return; }
+                html5QrCode = new Html5Qrcode("reader");
+                html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 250 } },
+                    function(text) {
+                        if (isPairingMode) {
+                            handlePairQrScanned(text);
+                            isPairingMode = false;
+                            stopScanner();
+                        } else {
+                            try {
+                                const url = new URL(text);
+                                const id = url.searchParams.get('id');
+                                const name = url.searchParams.get('name');
+                                if (url.searchParams.get('add') === '1' && id && name) {
+                                    const idPadded = id.padStart(2, '0');
+                                    const codes = RF_CODE_MAP[idPadded] || { on: 0, off: 0 };
+                                    db.ref(`${BASE_PATH}/RF/${idPadded}`).update({ name, state: false, onCode: codes.on, offCode: codes.off });
+                                    showToast('✅ ' + name, 'success');
+                                    stopScanner();
+                                }
+                            } catch (e) {}
+                        }
+                    }, () => {}
+                ).then(() => {
+                    isScanning = true;
+                    document.getElementById('startScanBtn').style.display = 'none';
+                    document.getElementById('stopScanBtn').style.display = 'inline-block';
+                });
+            });
+            document.getElementById('stopScanBtn').addEventListener('click', stopScanner);
+
+            function stopScanner() {
+                if (!html5QrCode || !isScanning) return;
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                    isScanning = false;
+                    document.getElementById('startScanBtn').style.display = 'inline-block';
+                    document.getElementById('stopScanBtn').style.display = 'none';
+                });
+            }
+
+            // History
+            function loadHistory() {
+                const historyList = document.getElementById('historyList');
+                const clearBtn = document.getElementById('clearHistoryInline');
+                historyList.innerHTML = `<div class="history-empty">${tSite('loading')}</div>`;
+                db.ref(`${BASE_PATH}/history`).orderByKey().limitToLast(50).once('value').then(snap => {
+                    const data = snap.val();
+                    if (!data) { historyList.innerHTML = `<div class="history-empty">${tSite('no_history')}</div>`; clearBtn.disabled = true; return; }
+                    const entries = Object.keys(data).map(k => ({ id: k, ...data[k] })).reverse();
+                    clearBtn.disabled = entries.length === 0;
+                    let html = '';
+                    entries.forEach(e => {
+                        const time = e.timestamp ? new Date(e.timestamp).toLocaleString(siteLang === 'km' ? 'km-KH' : 'en-US', { hour12: false }) : 'Unknown';
+                        const icon = e.action && e.action.includes('ON') ? 'fa-toggle-on' : 'fa-toggle-off';
+                        html += `<div class="history-item">
+                            <div class="light-info"><i class="fas ${icon}" style="color: var(--accent-color);"></i><span>${e.device || 'Device'}</span><span>${e.action || ''}${e.details ? ' (' + e.details + ')' : ''}</span></div>
+                            <div class="timestamp">${time}</div>
+                        </div>`;
+                    });
+                    historyList.innerHTML = html;
+                });
+            }
+            document.getElementById('clearHistoryInline').addEventListener('click', () => {
+                if (!confirm('Clear history?')) return;
+                db.ref(`${BASE_PATH}/history`).remove().then(() => {
+                    loadHistory();
+                    document.getElementById('clearHistoryInline').disabled = true;
+                    showToast('✓ ' + tSite('clear_all'), 'info');
+                });
+            });
+
+            // ESP Status
+            const fbStatus = document.getElementById('fbStatus');
+            const wifiStatusBox = document.getElementById('wifiCurrentStatus');
+            const wifiStatusText = document.getElementById('wifiStatusText');
+            const wifiStatusDetail = document.getElementById('wifiStatusDetail');
+
+            function setEspOffline() {
+                fbStatus.innerHTML = `<i class="fas fa-circle" style="color: #e74c3c;"></i> <span>${tSite('esp_disconnected')}</span>`;
+                if (wifiStatusBox) {
+                    wifiStatusBox.classList.remove('connected');
+                    wifiStatusText.textContent = '❌ ' + tSite('esp_disconnected');
+                    wifiStatusDetail.textContent = 'ESP32 (Offline)';
+                }
+            }
+
+            db.ref('ESP/status').on('value', snap => {
+                const data = snap.val();
+                if (espHeartbeatTimer) clearTimeout(espHeartbeatTimer);
+                if (data && data.online === true) {
+                    fbStatus.innerHTML = `<i class="fas fa-circle" style="color: #2ecc71;"></i> <span>${tSite('esp_connected')}</span>`;
+                    if (wifiStatusBox) {
+                        wifiStatusBox.classList.add('connected');
+                        wifiStatusText.textContent = '✅ ' + tSite('esp_connected');
+                        wifiStatusDetail.innerHTML = `<i class="fas fa-wifi"></i> <b>${data.ssid || '?'}</b> | 📍 ${data.ip || '?'} | 📶 ${data.rssi || 0} dBm`;
+                    }
+                    espHeartbeatTimer = setTimeout(() => setEspOffline(), 10000);
+                } else { setEspOffline(); }
+            });
+
+            // NAVIGATION
+            const navLinks = document.querySelectorAll('.sidebar-nav a');
+            const bottomNavItems = document.querySelectorAll('.bottom-nav-item');
+            const views = {
+                home: document.getElementById('view-home'), history: document.getElementById('view-history'),
+                qrcode: document.getElementById('view-qrcode'), about: document.getElementById('view-about'),
+                settings: document.getElementById('view-settings')
+            };
+
+            function switchView(viewId) {
+                Object.keys(views).forEach(k => views[k].classList.remove('active'));
+                if (views[viewId]) views[viewId].classList.add('active');
+                navLinks.forEach(x => x.classList.toggle('active', x.dataset.view === viewId));
+                bottomNavItems.forEach(x => x.classList.toggle('active', x.dataset.view === viewId));
+                if (viewId === 'history') loadHistory();
+                if (window.innerWidth <= 700) document.getElementById('sidebar').classList.remove('open');
+            }
+            window.switchView = switchView;
+
+            navLinks.forEach(l => l.addEventListener('click', function(e) { e.preventDefault(); switchView(this.dataset.view); }));
+            bottomNavItems.forEach(item => item.addEventListener('click', function() { switchView(this.dataset.view); }));
+            document.getElementById('hamburgerBtn').addEventListener('click', () => { document.getElementById('sidebar').classList.toggle('open'); });
+
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('add') === '1' && params.get('id') && params.get('name')) {
+                const id = params.get('id').padStart(2, '0');
+                const codes = RF_CODE_MAP[id] || { on: 0, off: 0 };
+                db.ref(`${BASE_PATH}/RF/${id}`).update({ name: params.get('name'), state: false, onCode: codes.on, offCode: codes.off });
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
+        async function loadPairedDevice() {
+            const user = firebase.auth().currentUser;
+            if (!user) return;
+            const userUid = user.uid;
+            try {
+                const snapshot = await db.ref('devices').once('value');
+                const devices = snapshot.val();
+                if (!devices) { hidePairedInfo(); return; }
+                let foundDevice = null;
+                Object.keys(devices).forEach(deviceId => {
+                    const dev = devices[deviceId];
+                    if (dev && dev.ownerUid === userUid) foundDevice = { id: deviceId, data: dev };
+                });
+                if (foundDevice) showPairedInfo(foundDevice.id, foundDevice.data);
+                else hidePairedInfo();
+            } catch (err) { console.warn(err); }
+        }
+        
+        function showPairedInfo(deviceId, data) {
+            const infoBox = document.getElementById('pairedDeviceInfo');
+            const detailEl = document.getElementById('pairedDeviceDetail');
+            const unpairBtn = document.getElementById('unpairDeviceBtn');
+            const pairBtn = document.getElementById('pairDeviceBtn');
+            if (infoBox) infoBox.style.display = 'block';
+            if (detailEl) {
+                const online = data.status && data.status.online === true ? '🟢 Online' : '⚪ Offline';
+                const ip = data.status && data.status.ip ? data.status.ip : 'N/A';
+                const rssi = data.status && data.status.rssi ? data.status.rssi : 'N/A';
+                detailEl.innerHTML = `🆔 <b>${deviceId}</b> &nbsp;|&nbsp; ${online}<br>📍 ${ip} &nbsp;|&nbsp; 📶 ${rssi} dBm`;
+            }
+            if (unpairBtn) unpairBtn.style.display = 'inline-block';
+            if (pairBtn) pairBtn.style.display = 'none';
+            currentDeviceId = deviceId;
+        }
+        
+        function hidePairedInfo() {
+            const infoBox = document.getElementById('pairedDeviceInfo');
+            const unpairBtn = document.getElementById('unpairDeviceBtn');
+            const pairBtn = document.getElementById('pairDeviceBtn');
+            if (infoBox) infoBox.style.display = 'none';
+            if (unpairBtn) unpairBtn.style.display = 'none';
+            if (pairBtn) pairBtn.style.display = 'inline-block';
+            currentDeviceId = null;
+        }
+
+        async function pairDevice() {
+            const deviceId = document.getElementById('pairDeviceId').value.trim().toUpperCase();
+            const pin = document.getElementById('pairDevicePin').value.trim();
+            const statusEl = document.getElementById('pairStatus');
+            const user = firebase.auth().currentUser;
+            statusEl.textContent = '';
+            statusEl.style.color = '';
+            if (!deviceId || !pin) { statusEl.textContent = '❌ សូមបញ្ចូល Device ID + PIN!'; statusEl.style.color = '#e74c3c'; return; }
+            if (!user) { statusEl.textContent = '❌ សូម Login មុន!'; statusEl.style.color = '#e74c3c'; return; }
+            statusEl.textContent = '⏳ កំពុងពិនិត្យ...';
+            statusEl.style.color = '#f39c12';
+            try {
+                await db.ref('pairing/request').remove();
+                await db.ref('pairing/response').remove();
+                const snapshot = await db.ref('devices/' + deviceId).once('value');
+                if (snapshot.exists() && snapshot.val().online === true) {
+                    const deviceData = snapshot.val();
+                    if (deviceData.pin !== pin) { statusEl.textContent = '❌ PIN មិនត្រូវ!'; statusEl.style.color = '#e74c3c'; return; }
+                    if (deviceData.ownerUid && deviceData.ownerUid !== user.uid) {
+                        if (!confirm('⚠️ Device មាន Owner រួច!\n\nប្តូរ Owner?')) { statusEl.textContent = '❌ បោះបង់'; statusEl.style.color = '#e74c3c'; return; }
+                    }
+                    await db.ref('devices/' + deviceId).update({ ownerUid: user.uid, ownerEmail: user.email, pairedAt: Date.now() });
+                    statusEl.textContent = '✅ Pair ជោគជ័យ!';
+                    statusEl.style.color = '#2ecc71';
+                    showToast('Device ' + deviceId + ' ភ្ជាប់រួច!', 'success');
+                    document.getElementById('pairDeviceId').value = '';
+                    document.getElementById('pairDevicePin').value = '';
+                    setTimeout(() => { loadPairedDevice(); statusEl.textContent = ''; }, 1500);
+                } else {
+                    statusEl.textContent = '⏳ កំពុងប្រាប់ ESP32 ឲ្យក្លាយជា ' + deviceId + '...';
+                    statusEl.style.color = '#f39c12';
+                    await db.ref('pairing/request').set({ deviceId: deviceId, pin: pin, ownerUid: user.uid, ownerEmail: user.email, requestedAt: Date.now(), accepted: false });
+                    let timeoutHandle = setTimeout(() => {
+                        statusEl.textContent = '❌ ESP32 មិនឆ្លើយតប (30s)';
+                        statusEl.style.color = '#e74c3c';
+                        if (pairingResponseListener) { db.ref('pairing/response').off('value', pairingResponseListener); pairingResponseListener = null; }
+                    }, 30000);
+                    if (pairingResponseListener) db.ref('pairing/response').off('value', pairingResponseListener);
+                    pairingResponseListener = db.ref('pairing/response').on('value', async (snap) => {
+                        const resp = snap.val();
+                        if (resp && resp.deviceId === deviceId && resp.accepted) {
+                            clearTimeout(timeoutHandle);
+                            if (pairingResponseListener) { db.ref('pairing/response').off('value', pairingResponseListener); pairingResponseListener = null; }
+                            statusEl.textContent = '✅ ESP32 ក្លាយជា ' + deviceId + '!';
+                            statusEl.style.color = '#2ecc71';
+                            showToast('ESP32 ក្លាយជា ' + deviceId, 'success');
+                            document.getElementById('pairDeviceId').value = '';
+                            document.getElementById('pairDevicePin').value = '';
+                            setTimeout(() => db.ref('pairing/response').remove(), 5000);
+                            setTimeout(() => { loadPairedDevice(); statusEl.textContent = ''; }, 3000);
+                        }
+                    });
+                }
+            } catch (err) { statusEl.textContent = '❌ Error: ' + err.message; statusEl.style.color = '#e74c3c'; }
+        }
+
+        async function unpairDevice() {
+            if (!confirm('⚠️ Unpair Device?\n\nESP32 នឹង Reset ខ្លួនឯង → Auto-Adapt Mode')) return;
+            const user = firebase.auth().currentUser;
+            if (!user) return;
+            const statusEl = document.getElementById('pairStatus');
+            statusEl.textContent = '';
+            statusEl.style.color = '';
+            statusEl.textContent = '⏳ Unpairing...';
+            statusEl.style.color = '#f39c12';
+            try {
+                const snapshot = await db.ref('devices').once('value');
+                const devices = snapshot.val();
+                if (!devices) return;
+                let found = false;
+                for (const deviceId of Object.keys(devices)) {
+                    const dev = devices[deviceId];
+                    if (dev && dev.ownerUid === user.uid) {
+                        await db.ref('devices/' + deviceId).update({ ownerUid: "", ownerEmail: "", pairedAt: null });
+                        found = true;
+                        break;
+                    }
+                }
+                if (found) {
+                    statusEl.textContent = '✅ Unpaired! ESP32 នឹង Reset ខ្លួនឯង (3s)';
+                    statusEl.style.color = '#2ecc71';
+                    showToast('Unpaired! រង់ចាំ ESP32 Reset', 'success');
+                    setTimeout(() => { loadPairedDevice(); statusEl.textContent = ''; }, 4000);
+                } else {
+                    statusEl.textContent = '⚠️ រកមិនឃើញ Device';
+                    statusEl.style.color = '#f39c12';
+                    setTimeout(() => statusEl.textContent = '', 2000);
+                }
+            } catch (err) { statusEl.textContent = '❌ Error: ' + err.message; statusEl.style.color = '#e74c3c'; }
+        }
+
+        async function togglePairQrScanner() {
+            switchView('qrcode');
+            isPairingMode = true;
+            document.getElementById('startScanBtn').click();
+        }
+
+        function handlePairQrScanned(text) {
+            console.log('📷 Scanned:', text);
+            let deviceId = null;
+            let pin = null;
+            try {
+                const url = new URL(text);
+                deviceId = url.searchParams.get('id') || url.searchParams.get('deviceId');
+                pin = url.searchParams.get('pin');
+            } catch (e) {}
+            if (!deviceId && text.includes('id=') && text.includes('pin=')) {
+                const idMatch = text.match(/id=([^&]+)/);
+                const pinMatch = text.match(/pin=([^&]+)/);
+                if (idMatch) deviceId = decodeURIComponent(idMatch[1]);
+                if (pinMatch) pin = decodeURIComponent(pinMatch[1]);
+            }
+            if (!deviceId && text.includes('|')) {
+                const parts = text.split('|');
+                if (parts.length === 2) { deviceId = parts[0].trim(); pin = parts[1].trim(); }
+            }
+            if (!deviceId) {
+                try { const json = JSON.parse(text); deviceId = json.id || json.deviceId; pin = json.pin; } catch (e) {}
+            }
+            if (!deviceId || !pin) {
+                alert('❌ QR មិនត្រឹមត្រូវ!\n\nត្រូវមាន Device ID + PIN\n\nទទួលបាន: ' + text);
+                return;
+            }
+            deviceId = deviceId.toUpperCase();
+            document.getElementById('pairDeviceId').value = deviceId;
+            document.getElementById('pairDevicePin').value = pin;
+            showToast('✅ បានអាន: ' + deviceId, 'success');
+            setTimeout(() => pairDevice(), 800);
+        }
+
+        addRippleEffect();
+        console.log('✅ System ready!');
+    </script>
+</body>
+</html>
